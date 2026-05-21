@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Surveilans Campak-Rubella — Kab. Kapuas 2026</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#0f6e56;--green-d:#085041;--green-l:#E1F5EE;--green-m:#1D9E75;
+  --red:#E24B4A;--red-l:#FCEBEB;--red-d:#A32D2D;
+  --amber:#EF9F27;--amber-l:#FAEEDA;--amber-d:#854F0B;
+  --blue:#378ADD;--blue-l:#E6F1FB;--blue-d:#185FA5;
+  --purple:#9932CC;--purple-l:#F3E8FF;
+  --gray:#888780;--gray-l:#F5F5F4;
+  --bg:#F3F6F4;--card:#fff;--border:#E4E4E0;
+  --text:#1A1A18;--text2:#666663;--text3:#9B9B97;
+  --r:10px;--sh:0 1px 4px rgba(0,0,0,.07);
+}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+.hdr{background:linear-gradient(135deg,#0a5c46 0%,#0f6e56 60%,#1D9E75 100%);
+  color:#fff;padding:0 1.5rem;display:flex;align-items:center;gap:12px;
+  height:60px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.18);}
+.hdr-logo{width:36px;height:36px;background:rgba(255,255,255,.15);border-radius:9px;
+  display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.2);}
+.hdr-logo i{font-size:20px;color:#9FE1CB;}
+.hdr-text h1{font-size:15px;font-weight:700;line-height:1.2;}
+.hdr-text p{font-size:11px;opacity:.75;}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.live-pill{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.22);border-radius:20px;
+  padding:5px 12px;font-size:11px;font-weight:500;cursor:pointer;transition:.15s;}
+.live-pill:hover{background:rgba(255,255,255,.22);}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#9FE1CB;}
+.live-dot.pulse{animation:dp .9s infinite;}
+.live-dot.err{background:#F09995;}
+@keyframes dp{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.nav-wrap{background:var(--card);border-bottom:1px solid var(--border);
+  position:sticky;top:60px;z-index:100;}
+.nav{display:flex;padding:0 1.5rem;overflow-x:auto;}
+.nav::-webkit-scrollbar{display:none;}
+.nb{padding:13px 16px;border:none;background:none;font-size:13px;font-weight:500;
+  color:var(--text2);cursor:pointer;border-bottom:2.5px solid transparent;
+  white-space:nowrap;display:flex;align-items:center;gap:6px;
+  transition:.15s;font-family:inherit;}
+.nb:hover{color:var(--green);}
+.nb.act{color:var(--green);border-bottom-color:var(--green);font-weight:600;}
+.nb .cnt{font-size:10px;padding:1px 6px;border-radius:10px;
+  background:var(--green-l);color:var(--green);font-weight:700;}
+.nb.act .cnt{background:var(--green);color:#fff;}
+.content{padding:1.25rem 1.5rem;max-width:1280px;margin:0 auto;}
+.sec{display:none;}.sec.act{display:block;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;box-shadow:var(--sh);}
+.card-t{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:12px;
+  text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:6px;}
+.card-t i{font-size:15px;}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin-bottom:1.25rem;}
+.mc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:14px 16px;box-shadow:var(--sh);position:relative;overflow:hidden;}
+.mc::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.mc.cg::after{background:var(--green-m);}
+.mc.cr::after{background:var(--red);}
+.mc.ca::after{background:var(--amber);}
+.mc.cb::after{background:var(--blue);}
+.mc.cp::after{background:var(--purple);}
+.mc-lbl{font-size:11px;color:var(--text2);margin-bottom:5px;display:flex;align-items:center;gap:4px;}
+.mc-val{font-size:30px;font-weight:700;line-height:1;}
+.mc-val.g{color:var(--green);}
+.mc-val.r{color:var(--red);}
+.mc-val.a{color:var(--amber-d);}
+.mc-val.b{color:var(--blue-d);}
+.mc-val.p{color:var(--purple);}
+.mc-sub{font-size:11px;color:var(--text3);margin-top:5px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.25rem;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.25rem;}
+.g13{display:grid;grid-template-columns:1.4fr 1fr;gap:12px;margin-bottom:1.25rem;}
+.al{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;
+  border-radius:8px;margin-bottom:8px;font-size:13px;line-height:1.5;}
+.al i{font-size:17px;flex-shrink:0;margin-top:1px;}
+.al-r{background:var(--red-l);color:var(--red-d);border-left:3px solid var(--red);}
+.al-a{background:var(--amber-l);color:var(--amber-d);border-left:3px solid var(--amber);}
+.al-b{background:var(--blue-l);color:var(--blue-d);border-left:3px solid var(--blue);}
+.al-g{background:var(--green-l);color:var(--green-d);border-left:3px solid var(--green-m);}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;}
+.bp{background:var(--red-l);color:var(--red-d);}
+.bn{background:var(--green-l);color:var(--green-d);}
+.bw{background:var(--blue-l);color:var(--blue-d);}
+.bl{background:var(--amber-l);color:var(--amber-d);}
+.bklb{background:var(--red-l);color:var(--red-d);border:1px solid var(--red);}
+.bwsp{background:var(--amber-l);color:var(--amber-d);border:1px solid var(--amber);}
+.bnor{background:var(--green-l);color:var(--green-d);}
+.bya{background:var(--green-l);color:var(--green-d);}
+.btdk{background:var(--red-l);color:var(--red-d);}
+.bunk{background:var(--gray-l);color:var(--gray);}
+.bar-item{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.bar-lbl{font-size:12px;width:125px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bar-track{flex:1;background:#EDEDE9;border-radius:4px;height:18px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:7px;min-width:24px;}
+.bar-num{font-size:11px;color:#fff;font-weight:700;}
+.bar-right{width:80px;text-align:right;flex-shrink:0;display:flex;gap:3px;align-items:center;justify-content:flex-end;}
+.tw{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+th{text-align:left;padding:9px 11px;color:var(--text2);font-weight:600;
+  background:#FAFAF8;border-bottom:1px solid var(--border);
+  white-space:nowrap;font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+td{padding:8px 11px;border-bottom:1px solid #F0F0EC;color:var(--text);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#F6FBF9;}
+.tc{text-align:center;}
+.tm{font-family:monospace;font-size:11px;color:var(--text3);}
+.frow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+.frow select,.frow input{font-size:12px;padding:7px 10px;border-radius:7px;
+  border:1px solid var(--border);background:var(--card);color:var(--text);
+  font-family:inherit;outline:none;}
+.frow select:focus,.frow input:focus{border-color:var(--green);}
+.fcnt{margin-left:auto;font-size:12px;color:var(--text3);font-weight:500;}
+#map{width:100%;height:460px;border-radius:var(--r);border:1px solid var(--border);}
+.map-leg{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--text2);}
+.map-leg-item{display:flex;align-items:center;gap:5px;}
+.map-leg-dot{width:12px;height:12px;border-radius:50%;border:2px solid rgba(0,0,0,.1);}
+.map-info{display:none;margin-top:10px;background:#FAFFFE;
+  border:1px solid #C8E8DE;border-radius:var(--r);padding:14px 16px;border-left:4px solid var(--green);}
+.map-sg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
+.map-s{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px;text-align:center;}
+.map-sl{font-size:10px;color:var(--text3);}
+.map-sv{font-size:20px;font-weight:700;}
+.dl{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+.dl-item{display:flex;align-items:center;justify-content:space-between;font-size:12px;}
+.dl-left{display:flex;align-items:center;gap:6px;color:var(--text2);}
+.dl-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.dl-val{font-weight:600;color:var(--text);}
+.dr{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;}
+.dr-lbl{font-size:12px;color:var(--text3);padding:3px 0;}
+.dr-val{font-size:12px;font-weight:500;padding:3px 0;}
+.overlay{position:fixed;inset:0;background:rgba(255,255,255,.93);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:999;gap:14px;}
+.overlay.off{display:none;}
+.spin-ring{width:44px;height:44px;border:3px solid var(--green-l);
+  border-top-color:var(--green);border-radius:50%;animation:spin 1s linear infinite;}
+.ov-title{font-size:15px;font-weight:600;color:var(--text2);}
+.ov-sub{font-size:12px;color:var(--text3);}
+.btn-ref{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;
+  border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);
+  background:var(--card);color:var(--text);font-family:inherit;transition:.15s;}
+.btn-ref:hover{border-color:var(--green);color:var(--green);}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:500;display:none;align-items:center;justify-content:center;}
+.modal-bg.on{display:flex;}
+/* ── Admin PIN System ── */
+.modal-pin{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;display:none;align-items:center;justify-content:center;}
+.modal-pin.on{display:flex;}
+.modal-pin-box{background:#fff;border-radius:14px;padding:2rem;width:min(340px,90vw);box-shadow:0 8px 40px rgba(0,0,0,.22);text-align:center;}
+.modal-pin-box h4{font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.modal-pin-box p{font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.6;}
+.pin-input-field{width:150px;font-size:18px;padding:10px;border:1.5px solid var(--border);border-radius:8px;text-align:center;letter-spacing:6px;display:block;margin:0 auto 10px;font-family:monospace;outline:none;}
+.pin-input-field:focus{border-color:var(--green);}
+.pin-sm-field{width:160px;font-size:14px;padding:8px;border:1.5px solid var(--border);border-radius:8px;text-align:center;letter-spacing:4px;display:block;margin:0 auto 8px;font-family:monospace;outline:none;}
+.pin-sm-field:focus{border-color:var(--green);}
+.pin-submit-btn{padding:9px 22px;background:var(--green);color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:600;}
+.pin-submit-btn:hover{background:var(--green-d);}
+.admin-bar{display:flex;align-items:center;justify-content:space-between;background:var(--green-l);border:1px solid #9FE1CB;border-radius:8px;padding:8px 14px;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+.admin-bar-info{font-size:12px;color:var(--green-d);font-weight:600;}
+.admin-bar-info .abadge{background:var(--green);color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;margin-right:8px;}
+.lock-btn{padding:6px 14px;background:var(--red-d);color:#fff;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:600;}
+.lock-btn:hover{background:#7a1f1f;}
+.change-pin-btn{padding:6px 14px;background:#fff;color:var(--green);border:1.5px solid var(--green);border-radius:7px;font-size:12px;cursor:pointer;font-weight:600;}
+.change-pin-btn:hover{background:var(--green-l);}
+.modal{background:var(--card);border-radius:14px;padding:1.5rem;width:min(620px,95vw);
+  max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18);}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;
+  padding-bottom:.75rem;border-bottom:1px solid var(--border);}
+.modal-title{font-size:15px;font-weight:700;}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);}
+.modal-section{margin-bottom:1rem;}
+.modal-sec-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--text2);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);}
+.ar-lbl{font-size:11px;color:rgba(255,255,255,.7);white-space:nowrap;}
+@media(max-width:768px){
+  .g2,.g3,.g13{grid-template-columns:1fr;}
+  .metrics{grid-template-columns:repeat(2,1fr);}
+  .map-sg{grid-template-columns:repeat(2,1fr);}
+  .content{padding:1rem;}
+  .hdr-logo,.ar-lbl{display:none;}
+  .hdr-text h1{font-size:13px;}
+}
+</style>
+</head>
+<body>
+
+<div class="overlay" id="ov">
+  <div class="spin-ring"></div>
+  <div class="ov-title">Memuat data dari Google Sheets…</div>
+  <div class="ov-sub" id="ov-sub">Menghubungkan ke Arsip Kasus Campak-Rubella 2026</div>
+</div>
+
+<!-- Modal PIN Admin Campak -->
+<div class="modal-pin" id="pin-modal" onclick="if(event.target===this)closePinModal()">
+  <div class="modal-pin-box">
+    <div style="font-size:2.5rem;margin-bottom:8px;">🔐</div>
+    <h4 id="pin-modal-title">Login Admin</h4>
+    <p id="pin-modal-desc">Masukkan PIN untuk mengakses pengaturan data penduduk.</p>
+    <div id="pin-field-login">
+      <input class="pin-input-field" type="password" id="pin-old" placeholder="••••" maxlength="8"
+        onkeydown="if(event.key==='Enter')submitPin()">
+    </div>
+    <div id="pin-field-change" style="display:none;">
+      <input class="pin-sm-field" type="password" id="pin-new" placeholder="PIN baru" maxlength="8">
+      <input class="pin-sm-field" type="password" id="pin-new2" placeholder="Konfirmasi PIN" maxlength="8"
+        onkeydown="if(event.key==='Enter')submitPin()">
+    </div>
+    <div id="pin-err" style="font-size:12px;color:var(--red-d);margin-bottom:8px;display:none;"></div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:4px;">
+      <button onclick="closePinModal()" style="padding:8px 16px;border:1px solid var(--border);background:#fff;border-radius:7px;cursor:pointer;font-size:13px;font-family:inherit;">Batal</button>
+      <button class="pin-submit-btn" id="pin-submit-btn" onclick="submitPin()">Masuk</button>
+    </div>
+    <p style="font-size:10px;color:#ccc;margin-top:12px;">PIN default: 1234 (ganti segera setelah login)</p>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-bg" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title" id="modal-title"></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<header class="hdr">
+  <div class="hdr-logo"><i class="ti ti-virus-search"></i></div>
+  <div class="hdr-text">
+    <h1>Surveilans Campak-Rubella</h1>
+    <p>Kabupaten Kapuas, Kalimantan Tengah · Tahun 2026</p>
+  </div>
+  <div class="hdr-right">
+    <span class="ar-lbl" id="ar-lbl">Auto-refresh 5:00</span>
+    <div class="live-pill" onclick="loadData()" title="Klik untuk refresh">
+      <span class="live-dot pulse" id="live-dot"></span>
+      <span id="live-lbl">Memuat…</span>
+    </div>
+  </div>
+</header>
+
+<div class="nav-wrap">
+  <nav class="nav">
+    <button class="nb act" onclick="showTab('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard <span class="cnt" id="cnt-all">—</span></button>
+    <button class="nb" onclick="showTab('peta',this)"><i class="ti ti-map-2"></i> Peta Sebaran</button>
+    <button class="nb" onclick="showTab('grafik',this)"><i class="ti ti-chart-line"></i> Grafik & Tren</button>
+    <button class="nb" onclick="showTab('tabel',this)"><i class="ti ti-table"></i> Data Kasus <span class="cnt" id="cnt-tbl">—</span></button>
+    <button class="nb" onclick="showTab('laporan',this)"><i class="ti ti-file-analytics"></i> Laporan</button>
+    <button class="nb" onclick="showTab('pengaturan',this)"><i class="ti ti-settings"></i> Pengaturan</button>
+  </nav>
+</div>
+
+<div class="content">
+
+<!-- DASHBOARD -->
+<div class="sec act" id="tab-dashboard">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div style="font-size:13px;font-weight:600;">Ringkasan Kasus Campak-Rubella — Data Real-time</div>
+      <div style="font-size:11px;color:var(--text3);" id="last-sync">Memuat…</div>
+    </div>
+    <button class="btn-ref" onclick="loadData()"><i class="ti ti-refresh"></i> Refresh Data</button>
+  </div>
+  <div class="metrics" id="metrics"></div>
+  <div id="alerts" style="margin-bottom:1.25rem;"></div>
+  <div class="g13">
+    <div class="card">
+      <div class="card-t"><i class="ti ti-map-pin"></i> Kasus per Kecamatan</div>
+      <div id="kec-bars" style="max-height:320px;overflow-y:auto;padding-right:4px;"></div>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-flask"></i> Hasil Lab Campak</div>
+      <div style="position:relative;height:180px;"><canvas id="pie-lab"></canvas></div>
+      <div class="dl" id="pie-lab-leg"></div>
+    </div>
+  </div>
+  <div class="g3">
+    <div class="card">
+      <div class="card-t"><i class="ti ti-gender-bigender"></i> Jenis Kelamin</div>
+      <div style="position:relative;height:150px;"><canvas id="pie-sex"></canvas></div>
+      <div class="dl" id="pie-sex-leg"></div>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-vaccine"></i> Status Imunisasi MR-1</div>
+      <div style="position:relative;height:150px;"><canvas id="pie-imun"></canvas></div>
+      <div class="dl" id="pie-imun-leg"></div>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-building-hospital"></i> Sumber Laporan</div>
+      <div style="position:relative;height:150px;"><canvas id="pie-sumber"></canvas></div>
+      <div class="dl" id="pie-sumber-leg"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-t"><i class="ti ti-clock"></i> 5 Kasus Terbaru</div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>No. Epid</th><th>Nama</th><th>Umur</th><th>Kecamatan</th><th>Tgl Demam</th><th>Hasil Campak</th><th>Hasil Rubella</th></tr></thead>
+        <tbody id="tbl-recent"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PETA -->
+<div class="sec" id="tab-peta">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+    <span style="font-size:13px;font-weight:500;">Sebaran Kasus per Kecamatan</span>
+    <div class="frow" style="margin:0 0 0 auto;">
+      <select id="peta-filter" onchange="renderMap()">
+        <option value="semua">Semua Kasus</option>
+        <option value="Positif">Positif Campak</option>
+        <option value="Negatif">Negatif</option>
+        <option value="pending">Menunggu Lab</option>
+      </select>
+    </div>
+  </div>
+  <div id="map"></div>
+  <div class="map-leg">
+    <span class="map-leg-item"><span class="map-leg-dot" style="background:#C0392B;"></span>KLB Pasti (≥2 IgM+)</span>
+    <span class="map-leg-item"><span class="map-leg-dot" style="background:#E24B4A;"></span>KLB Suspek (≥5 dalam 4 minggu)</span>
+    <span class="map-leg-item"><span class="map-leg-dot" style="background:#EF9F27;"></span>Waspada (3–4 kasus)</span>
+    <span class="map-leg-item"><span class="map-leg-dot" style="background:#1D9E75;"></span>Normal</span>
+    <span style="margin-left:auto;font-size:11px;color:var(--text3);">Berdasarkan DO pedoman campak-rubela · © OpenStreetMap</span>
+  </div>
+  <div class="map-info" id="map-info">
+    <div style="font-weight:700;font-size:14px;margin-bottom:8px;" id="map-info-title"></div>
+    <div class="map-sg" id="map-info-stats"></div>
+  </div>
+</div>
+
+<!-- GRAFIK -->
+<div class="sec" id="tab-grafik">
+  <div class="g2">
+    <div class="card">
+      <div class="card-t"><i class="ti ti-chart-bar"></i> Kasus per Bulan 2026</div>
+      <div style="position:relative;height:240px;"><canvas id="ch-bulan"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-users"></i> Distribusi Kelompok Usia</div>
+      <div style="position:relative;height:240px;"><canvas id="ch-usia"></canvas></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-t"><i class="ti ti-chart-line"></i> Kurva Epidemiologi (Tgl Ruam)</div>
+      <div style="position:relative;height:230px;"><canvas id="ch-epi"></canvas></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;">Setiap batang = jumlah kasus berdasarkan tanggal mulai ruam.</div>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-bed"></i> Rawat Inap vs Rawat Jalan</div>
+      <div style="position:relative;height:230px;"><canvas id="ch-rs"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- TABEL -->
+<div class="sec" id="tab-tabel">
+  <div class="card">
+    <div class="frow">
+      <select id="f-kec" onchange="renderTabel()"><option value="">Semua Kecamatan</option></select>
+      <select id="f-labc" onchange="renderTabel()">
+        <option value="">Semua Hasil Campak</option>
+        <option value="Positif">Positif</option>
+        <option value="Negatif">Negatif</option>
+        <option value="Lisis">Lisis</option>
+        <option value="pending">Menunggu</option>
+      </select>
+      <select id="f-labr" onchange="renderTabel()">
+        <option value="">Semua Hasil Rubella</option>
+        <option value="Positif">Positif Rubella</option>
+        <option value="Negatif">Negatif Rubella</option>
+        <option value="pending">Menunggu</option>
+      </select>
+      <select id="f-jk" onchange="renderTabel()">
+        <option value="">Semua JK</option>
+        <option value="L">Laki-laki</option>
+        <option value="P">Perempuan</option>
+      </select>
+      <select id="f-mr1" onchange="renderTabel()">
+        <option value="">Semua Status MR-1</option>
+        <option value="Ya">Sudah MR-1</option>
+        <option value="Tidak">Belum MR-1</option>
+      </select>
+      <input type="text" id="f-search" placeholder="🔍 Cari nama / no. epid..." oninput="renderTabel()" style="width:200px;"/>
+      <button class="btn-ref" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Ekspor CSV</button>
+      <span class="fcnt" id="f-cnt"></span>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr>
+          <th>No</th><th>No. Epid</th><th>Nama Kasus</th><th>JK</th><th>Umur</th>
+          <th>Kecamatan</th><th>Desa</th><th>Sumber</th>
+          <th>Tgl Demam</th><th>Tgl Ruam</th><th>RS</th>
+          <th>MR-1</th><th>MR-2</th><th>Tgl Ambil</th>
+          <th>Hasil Campak</th><th>Hasil Rubella</th><th></th>
+        </tr></thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- LAPORAN -->
+<div class="sec" id="tab-laporan">
+  <div class="g2">
+    <div class="card">
+      <div class="card-t"><i class="ti ti-report"></i> Ringkasan Eksekutif</div>
+      <div id="lap-ringkasan" style="font-size:13px;line-height:1.9;color:var(--text2);"></div>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-table"></i> Rekap per Kecamatan</div>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Kecamatan</th><th>Total</th><th>+Campak</th><th>+Rubella</th><th>Tunggu</th><th>Discarded</th><th>Disc. Rate</th><th>Status</th></tr></thead>
+          <tbody id="tbl-rekap"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-t"><i class="ti ti-calendar-stats"></i> Rekap per Bulan 2026</div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Bulan</th><th>Total Kasus</th><th>Positif Campak</th><th>Positif Rubella</th><th>Menunggu Lab</th><th>Laki-laki</th><th>Perempuan</th></tr></thead>
+        <tbody id="tbl-bulan"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PENGATURAN -->
+<div class="sec" id="tab-pengaturan">
+  <div class="card" style="margin-bottom:12px;">
+    <div class="card-t"><i class="ti ti-users"></i> Data Penduduk — Penyebut Discarded Rate Campak</div>
+    <p style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px;">
+      Masukkan jumlah <strong>total seluruh penduduk</strong> per kecamatan (semua umur) dari BPS/Disdukcapil/Pusdatin sesuai data terbaru.
+      Data ini digunakan sebagai penyebut perhitungan <strong>Discarded Rate Campak per 100.000 penduduk</strong> (target ≥2/100.000).
+    </p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-bottom:14px;" id="pop-grid"></div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <button class="btn-ref" style="background:var(--green);color:#fff;border-color:var(--green);" onclick="savePenduduk()">
+        <i class="ti ti-device-floppy"></i> Simpan & Hitung Ulang
+      </button>
+      <span id="save-msg" style="font-size:12px;color:var(--green-d);font-weight:600;display:none;">✅ Tersimpan! Discarded Rate diperbarui.</span>
+    </div>
+  </div>
+  <div class="g3">
+    <div class="mc cg">
+      <div class="mc-lbl"><i class="ti ti-users"></i> Total Penduduk</div>
+      <div class="mc-val g" id="adm-total-pop">—</div>
+      <div class="mc-sub">Seluruh penduduk Kab. Kapuas</div>
+    </div>
+    <div class="mc cp">
+      <div class="mc-lbl"><i class="ti ti-chart-bar"></i> Discarded Rate</div>
+      <div class="mc-val p" id="adm-disc-rate">—</div>
+      <div class="mc-sub">per 100.000 penduduk</div>
+    </div>
+    <div class="mc" id="adm-status-mc">
+      <div class="mc-lbl"><i class="ti ti-target"></i> Status Target WHO</div>
+      <div class="mc-val" id="adm-status-val">—</div>
+      <div class="mc-sub">Target ≥2 per 100.000</div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const SHEET_ID = '1poXSOO6CVYOIDmDGHiogxmsEFo_IrwYq';
+const GID = '1707861903';
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+const REFRESH_MS = 5 * 60 * 1000;
+const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const MONTHS_S = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+
+// ── Data penduduk total semua umur per kecamatan (edit di tab Pengaturan) ──
+// Sumber: BPS / Disdukcapil Kab. Kapuas — update sesuai data terbaru
+// 17 kecamatan resmi Kabupaten Kapuas — update angka sesuai data BPS terbaru
+let PENDUDUK_CAMPAK = {
+  'Selat': 35000,
+  'Kapuas Hilir': 16000,
+  'Bataguh': 18000,
+  'Kapuas Timur': 12000,
+  'Tamban Catur': 9000,
+  'Kapuas Kuala': 22000,
+  'Basarang': 23000,
+  'Kapuas Barat': 10000,
+  'Pulau Petak': 19000,
+  'Kapuas Murung': 11000,
+  'Dadahup': 13000,
+  'Mantangai': 24000,
+  'Timpah': 9000,
+  'Kapuas Tengah': 12000,
+  'Pasak Talawang': 6000,
+  'Kapuas Hulu': 14000,
+  'Mandau Talawang': 7000,
+};
+
+const TOTAL_POP_CAMPAK = () => Object.values(PENDUDUK_CAMPAK).reduce((a,b)=>a+b,0);
+
+// ── Load nilai PENDUDUK_CAMPAK dari localStorage jika sudah pernah disimpan ──
+const CAMPAK_POP_KEY = 'campak_penduduk_kapuas';
+(function loadPendudukCampakFromStorage(){
+  try {
+    const saved = localStorage.getItem(CAMPAK_POP_KEY);
+    if(saved){
+      const parsed = JSON.parse(saved);
+      Object.keys(PENDUDUK_CAMPAK).forEach(k=>{ if(parsed[k]!=null) PENDUDUK_CAMPAK[k]=parsed[k]; });
+    }
+  } catch(e){}
+})();
+
+// Discarded = kasus yang sudah ada hasil lab: negatif campak DAN negatif rubella
+function hitungDiscarded(rows) {
+  return rows.filter(r => r.hasilC === 'Negatif' && r.hasilR === 'Negatif').length;
+}
+function discardedRate(rows) {
+  const d = hitungDiscarded(rows);
+  const pop = TOTAL_POP_CAMPAK();
+  return pop ? d / pop * 100000 : 0;
+}
+const KEC_COORDS = {
+  'Selat':          {lat:-2.990, lng:114.588},
+  'Kapuas Hilir':   {lat:-2.780, lng:114.850},
+  'Bataguh':        {lat:-3.080, lng:114.320},
+  'Kapuas Timur':   {lat:-3.050, lng:114.380},
+  'Tamban Catur':   {lat:-3.120, lng:114.300},
+  'Kapuas Kuala':   {lat:-2.850, lng:114.720},
+  'Basarang':       {lat:-3.100, lng:114.680},
+  'Kapuas Barat':   {lat:-2.650, lng:113.700},
+  'Pulau Petak':    {lat:-3.150, lng:114.500},
+  'Kapuas Murung':  {lat:-3.300, lng:114.550},
+  'Dadahup':        {lat:-3.250, lng:114.750},
+  'Mantangai':      {lat:-2.500, lng:114.200},
+  'Timpah':         {lat:-1.800, lng:113.600},
+  'Kapuas Tengah':  {lat:-2.300, lng:113.950},
+  'Pasak Talawang': {lat:-2.500, lng:114.900},
+  'Kapuas Hulu':    {lat:-2.100, lng:113.800},
+  'Mandau Talawang':{lat:-2.600, lng:114.800},
+};
+
+let ALL = [], mapInst = null, mapMarkers = [], charts = {};
+
+// ── Admin PIN System ──
+const CAMPAK_PIN_KEY = 'campak_admin_pin';
+function getAdminPin(){ return localStorage.getItem(CAMPAK_PIN_KEY) || '1234'; }
+let adminUnlocked = false;
+
+function showPinModal(mode){
+  const m = document.getElementById('pin-modal');
+  m.dataset.mode = mode;
+  document.getElementById('pin-err').style.display='none';
+  document.getElementById('pin-old').value='';
+  const f = document.getElementById('pin-field-change');
+  if(mode==='login'){
+    document.getElementById('pin-modal-title').textContent='🔐 Login Admin';
+    document.getElementById('pin-modal-desc').textContent='Masukkan PIN untuk mengakses pengaturan data penduduk.';
+    document.getElementById('pin-old').placeholder='••••';
+    f.style.display='none';
+    document.getElementById('pin-submit-btn').textContent='Masuk';
+  } else {
+    document.getElementById('pin-modal-title').textContent='🔑 Ganti PIN Admin';
+    document.getElementById('pin-modal-desc').textContent='Masukkan PIN lama lalu PIN baru (min. 4 digit).';
+    document.getElementById('pin-old').placeholder='PIN lama';
+    document.getElementById('pin-new').value='';
+    document.getElementById('pin-new2').value='';
+    f.style.display='block';
+    document.getElementById('pin-submit-btn').textContent='Simpan PIN';
+  }
+  m.classList.add('on');
+  setTimeout(()=>document.getElementById('pin-old').focus(),100);
+}
+
+function closePinModal(){ document.getElementById('pin-modal').classList.remove('on'); }
+
+function submitPin(){
+  const mode = document.getElementById('pin-modal').dataset.mode;
+  const errEl = document.getElementById('pin-err');
+  errEl.style.display='none';
+  const oldVal = document.getElementById('pin-old').value.trim();
+  if(mode==='login'){
+    if(oldVal === getAdminPin()){
+      adminUnlocked = true;
+      closePinModal();
+      renderPengaturan();
+    } else {
+      errEl.textContent='❌ PIN salah. Coba lagi.';
+      errEl.style.display='block';
+      document.getElementById('pin-old').value='';
+    }
+  } else {
+    const newPin = document.getElementById('pin-new').value.trim();
+    const newPin2 = document.getElementById('pin-new2').value.trim();
+    if(oldVal !== getAdminPin()){ errEl.textContent='❌ PIN lama salah.'; errEl.style.display='block'; return; }
+    if(newPin.length < 4){ errEl.textContent='❌ PIN baru minimal 4 digit.'; errEl.style.display='block'; return; }
+    if(newPin !== newPin2){ errEl.textContent='❌ Konfirmasi PIN tidak cocok.'; errEl.style.display='block'; return; }
+    localStorage.setItem(CAMPAK_PIN_KEY, newPin);
+    closePinModal();
+    alert('✅ PIN berhasil diubah!');
+  }
+}
+
+function lockAdmin(){
+  adminUnlocked = false;
+  renderPengaturan();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadData();
+  setInterval(loadData, REFRESH_MS);
+  let cd = REFRESH_MS / 1000;
+  setInterval(() => {
+    cd--; if (cd <= 0) cd = REFRESH_MS / 1000;
+    const m = Math.floor(cd/60), s = cd % 60;
+    document.getElementById('ar-lbl').textContent = `Auto ${m}:${s.toString().padStart(2,'0')}`;
+  }, 1000);
+});
+
+async function loadData() {
+  setLive('pulse','Memuat…');
+  try {
+    const res = await fetch(CSV_URL + '&_=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = Papa.parse(text, {skipEmptyLines:true}).data;
+    ALL = rows.slice(2).filter(r => r[0] && r[0].trim() && !isNaN(r[0].trim())).map(r => ({
+      no:r[0]?.trim(), noEpid:r[1]?.trim()||'', sumber:r[2]?.trim()||'',
+      tglTerima:r[3]?.trim()||'', tglLacak:r[4]?.trim()||'',
+      nama:r[5]?.trim()||'', jk:r[6]?.trim()||'',
+      tahun:parseInt(r[7])||0, usiaBulan:parseInt(r[8])||0,
+      alamat:r[9]?.trim()||'', desa:r[10]?.trim()||'', kecamatan:r[11]?.trim()||'',
+      ortu:r[12]?.trim()||'', tglDemam:r[13]?.trim()||'', tglRuam:r[14]?.trim()||'',
+      rs:r[15]?.trim()||'', mr1:r[16]?.trim()||'', mr2:r[17]?.trim()||'',
+      bias:r[18]?.trim()||'', mmr:r[19]?.trim()||'', tglMmr:r[20]?.trim()||'',
+      tglAmbil:r[21]?.trim()||'', tglKirim:r[22]?.trim()||'', tglHasil:r[23]?.trim()||'',
+      hasilC:r[24]?.trim()||'', hasilR:r[25]?.trim()||'',
+    }));
+    document.getElementById('ov').classList.add('off');
+    document.getElementById('cnt-all').textContent = ALL.length;
+    document.getElementById('cnt-tbl').textContent = ALL.length;
+    document.getElementById('last-sync').textContent =
+      `Data real-time dari Google Sheets · Terakhir diperbarui: ${new Date().toLocaleString('id-ID')} · ${ALL.length} kasus`;
+    setLive('ok', `${ALL.length} kasus · ${new Date().toLocaleTimeString('id-ID')}`);
+    populateFilters();
+    renderDashboard();
+    renderTabel();
+    renderLaporan();
+    if (mapInst) renderMap();
+  } catch(e) {
+    setLive('err','Gagal — klik untuk coba lagi');
+    document.getElementById('ov').classList.add('off');
+    document.getElementById('last-sync').textContent = 'Gagal memuat: ' + e.message + ' · Pastikan Google Sheet dibagikan ke publik';
+  }
+}
+
+function setLive(state, lbl) {
+  const d = document.getElementById('live-dot');
+  d.className = 'live-dot' + (state==='pulse'?' pulse':state==='err'?' err':'');
+  document.getElementById('live-lbl').textContent = lbl;
+}
+
+function countBy(arr, fn) {
+  const m = {};
+  arr.forEach(r => { const k = fn(r); m[k] = (m[k]||0)+1; });
+  return m;
+}
+
+// ── Definisi Operasional KLB Campak-Rubela (Pedoman Kemenkes) ──
+// KLB Suspek    : ≥5 kasus suspek dalam 4 minggu (28 hari) berturut-turut, per kecamatan
+// KLB Campak Pasti : KLB Suspek + ≥2 spesimen IgM campak positif
+// KLB Rubela Pasti : KLB Suspek + ≥2 spesimen IgM rubela positif
+// "Hubungan epidemiologi" diasumsikan ada dalam 1 kecamatan (perlu konfirmasi investigasi lapangan)
+
+function parseTgl(tgl) {
+  if (!tgl) return null;
+  const p = tgl.trim().split('/');
+  if (p.length < 3) return null;
+  const d = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+// Cek apakah ada jendela 28 hari yang memuat ≥5 kasus suspek
+function adaJendela28Hari(tglArr, minKasus=5) {
+  const dates = tglArr.map(parseTgl).filter(Boolean).sort((a,b)=>a-b);
+  if (dates.length < minKasus) return false;
+  for (let i=0; i<=dates.length-minKasus; i++) {
+    const awal = dates[i];
+    const akhir = new Date(awal); akhir.setDate(akhir.getDate()+27); // 28 hari inklusif
+    let count = 0;
+    for (const d of dates) { if (d>=awal && d<=akhir) count++; }
+    if (count >= minKasus) return true;
+  }
+  return false;
+}
+
+// Hitung status KLB per kecamatan berdasarkan DO
+// rows = semua kasus (ALL), kec = nama kecamatan
+function hitungStatusKec(rows, kec) {
+  const kRows = rows.filter(r=>r.kecamatan===kec);
+  const tglSuspek = kRows.map(r=>r.tglDemam||r.tglRuam).filter(Boolean);
+  const posC = kRows.filter(r=>r.hasilC==='Positif').length;
+  const posR = kRows.filter(r=>r.hasilR==='Positif').length;
+
+  const isKLBSuspek = adaJendela28Hari(tglSuspek, 5);
+  const isKLBCampakPasti = isKLBSuspek && posC >= 2;
+  const isKLBRubelaPasti = isKLBSuspek && posR >= 2;
+
+  // Tentukan status utama untuk badge/warna
+  let status, kategori;
+  if (isKLBCampakPasti || isKLBRubelaPasti) {
+    status = 'KLB Pasti';
+    kategori = [];
+    if (isKLBCampakPasti) kategori.push('Campak');
+    if (isKLBRubelaPasti) kategori.push('Rubela');
+  } else if (isKLBSuspek) {
+    status = 'KLB Suspek';
+    kategori = ['Suspek'];
+  } else if (kRows.length >= 3) {
+    status = 'Waspada';   // Mendekati ambang, pantau ketat
+    kategori = [];
+  } else {
+    status = 'Normal';
+    kategori = [];
+  }
+  return { status, isKLBSuspek, isKLBCampakPasti, isKLBRubelaPasti, posC, posR, totalSuspek: kRows.length, kategori };
+}
+
+function statusColor(s) {
+  if (s==='KLB Pasti') return '#C0392B';
+  if (s==='KLB Suspek') return '#E24B4A';
+  if (s==='Waspada') return '#EF9F27';
+  return '#1D9E75';
+}
+function statusBadge(s) {
+  if (s==='KLB Pasti')   return `<span class="badge bklb" style="background:#F8D7D7;color:#C0392B;border-color:#C0392B;">KLB Pasti</span>`;
+  if (s==='KLB Suspek')  return `<span class="badge bklb">KLB Suspek</span>`;
+  if (s==='Waspada')     return `<span class="badge bwsp">Waspada</span>`;
+  return `<span class="badge bnor">Normal</span>`;
+}
+// Tetap sediakan getStatus untuk kompatibilitas, tidak dipakai untuk penentuan KLB
+function getStatus(posKonfirmasi) { return posKonfirmasi >= 2 ? 'KLB Pasti' : posKonfirmasi === 1 ? 'Waspada' : 'Normal'; }
+function labBadge(v) {
+  if (!v||v==='') return '<span class="badge bw">Menunggu</span>';
+  if (v==='Positif') return '<span class="badge bp">Positif</span>';
+  if (v==='Negatif') return '<span class="badge bn">Negatif</span>';
+  return `<span class="badge bl">${v}</span>`;
+}
+function imunBadge(v) {
+  if (!v||v==='') return '<span class="badge bunk">?</span>';
+  const lv = v.toLowerCase();
+  if (lv.startsWith('ya')) return '<span class="badge bya">Ya</span>';
+  if (lv.startsWith('tidak')&&!lv.includes('tahu')&&!lv.includes('ingat')) return '<span class="badge btdk">Tidak</span>';
+  return `<span class="badge bunk" title="${v}">Tdk Tahu</span>`;
+}
+function normImun(v) {
+  if (!v||v==='') return 'Tidak Diketahui';
+  const lv = v.toLowerCase();
+  if (lv.startsWith('ya')) return 'Sudah';
+  if (lv.startsWith('tidak')&&!lv.includes('tahu')&&!lv.includes('ingat')) return 'Belum';
+  return 'Tidak Diketahui';
+}
+function mkDonut(id, labels, data, colors, legId) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+  charts[id] = new Chart(document.getElementById(id), {
+    type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false}}}
+  });
+  const total = data.reduce((s,v)=>s+v,0);
+  document.getElementById(legId).innerHTML = labels.map((l,i)=>
+    `<div class="dl-item"><span class="dl-left"><span class="dl-dot" style="background:${colors[i]}"></span>${l}</span>
+     <span class="dl-val">${data[i]} <span style="font-weight:400;color:var(--text3)">(${total?Math.round(data[i]/total*100):0}%)</span></span></div>`
+  ).join('');
+}
+
+function showTab(id, el) {
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('act'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('act'));
+  document.getElementById('tab-'+id).classList.add('act');
+  el.classList.add('act');
+  if (id==='peta') setTimeout(initMap, 80);
+  if (id==='grafik') setTimeout(renderGrafik, 80);
+  if (id==='laporan') renderLaporan();
+  if (id==='pengaturan') renderPengaturan();
+}
+
+function renderDashboard() {
+  const rows = ALL;
+  const posC = rows.filter(r=>r.hasilC==='Positif').length;
+  const posR = rows.filter(r=>r.hasilR==='Positif').length;
+  const pend = rows.filter(r=>!r.hasilC||r.hasilC==='').length;
+  const rs = rows.filter(r=>r.rs==='Ya').length;
+
+  // Hitung status per kecamatan berdasarkan DO
+  const kecList = [...new Set(rows.filter(r=>r.kecamatan).map(r=>r.kecamatan))];
+  const kecStatusMap = {};
+  kecList.forEach(k=>{ kecStatusMap[k] = hitungStatusKec(rows, k); });
+
+  const kecSuspek = countBy(rows.filter(r=>r.kecamatan), r=>r.kecamatan);
+
+  const klbPastiKec  = kecList.filter(k=>kecStatusMap[k].status==='KLB Pasti');
+  const klbSuspekKec = kecList.filter(k=>kecStatusMap[k].status==='KLB Suspek');
+  const wspKec       = kecList.filter(k=>kecStatusMap[k].status==='Waspada');
+  const totalKLB     = klbPastiKec.length + klbSuspekKec.length;
+
+  document.getElementById('metrics').innerHTML = `
+    <div class="mc cg"><div class="mc-lbl"><i class="ti ti-users"></i> Total Suspek</div><div class="mc-val g">${rows.length}</div><div class="mc-sub">Seluruh kasus 2026</div></div>
+    <div class="mc cr"><div class="mc-lbl"><i class="ti ti-virus"></i> Positif Campak</div><div class="mc-val r">${posC}</div><div class="mc-sub">Konfirmasi IgM lab</div></div>
+    <div class="mc cp"><div class="mc-lbl"><i class="ti ti-virus-off"></i> Positif Rubella</div><div class="mc-val p">${posR}</div><div class="mc-sub">Konfirmasi IgM lab</div></div>
+    <div class="mc cb"><div class="mc-lbl"><i class="ti ti-clock"></i> Menunggu Lab</div><div class="mc-val b">${pend}</div><div class="mc-sub">Belum ada hasil</div></div>
+    <div class="mc cr"><div class="mc-lbl"><i class="ti ti-alert-triangle"></i> Kec. Status KLB</div><div class="mc-val r">${totalKLB}</div>
+      <div class="mc-sub">${klbPastiKec.length?`${klbPastiKec.length} KLB Pasti`:''}${klbPastiKec.length&&klbSuspekKec.length?' · ':''}${klbSuspekKec.length?`${klbSuspekKec.length} KLB Suspek`:(!klbPastiKec.length?'—':'')}</div></div>
+    <div class="mc ca"><div class="mc-lbl"><i class="ti ti-bed"></i> Rawat Inap RS</div><div class="mc-val a">${rs}</div><div class="mc-sub">dari ${rows.length} kasus</div></div>
+    ${renderDiscardedCard(rows)}
+  `;
+
+  let ah = '';
+  klbPastiKec.forEach(k => {
+    const st = kecStatusMap[k];
+    const jenis = st.kategori.join(' & ');
+    ah += `<div class="al al-r"><i class="ti ti-alert-triangle"></i><div>
+      <strong>🔴 KLB PASTI ${jenis.toUpperCase()} — Kec. ${k}:</strong>
+      ${st.totalSuspek} suspek dalam jendela 4 minggu, <strong>${st.posC} IgM campak positif</strong>${st.posR?`, <strong>${st.posR} IgM rubela positif</strong>`:''}.
+      Memenuhi DO KLB Pasti. <em>Respons outbreak dan pelaporan segera diperlukan.</em>
+    </div></div>`;
+  });
+  klbSuspekKec.forEach(k => {
+    const st = kecStatusMap[k];
+    ah += `<div class="al al-r" style="border-left-color:#E24B4A;background:#FFF5F5;"><i class="ti ti-alert-circle" style="color:#E24B4A"></i><div>
+      <strong>🟠 KLB SUSPEK — Kec. ${k}:</strong>
+      ${st.totalSuspek} suspek, ada jendela ≥5 kasus dalam 4 minggu berturut-turut.
+      IgM campak: ${st.posC}, IgM rubela: ${st.posR}.
+      ${st.posC<2&&st.posR<2?'<em>Belum memenuhi KLB Pasti. Investigasi lapangan dan pengambilan spesimen segera diperlukan.</em>':''}
+    </div></div>`;
+  });
+  wspKec.forEach(k => {
+    const st = kecStatusMap[k];
+    ah += `<div class="al al-a"><i class="ti ti-alert-circle"></i><div><strong>Waspada — Kec. ${k}:</strong> ${st.totalSuspek} kasus suspek. Belum memenuhi ambang KLB Suspek (≥5 dalam 4 minggu). Pantau ketat.</div></div>`;
+  });
+  if (pend) ah += `<div class="al al-b"><i class="ti ti-clock"></i><div><strong>${pend} kasus</strong> belum memiliki hasil laboratorium. Percepat pengiriman spesimen untuk konfirmasi status KLB.</div></div>`;
+  if (!klbPastiKec.length&&!klbSuspekKec.length) ah += `<div class="al al-g"><i class="ti ti-circle-check"></i><div>Tidak ada kecamatan berstatus KLB berdasarkan DO pedoman campak-rubela. Kasus suspek yang banyak namun hasil lab negatif mencerminkan kinerja surveilans yang baik.</div></div>`;
+
+  // Alert Discarded Rate
+  const dr = discardedRate(rows);
+  const disc = hitungDiscarded(rows);
+  if (dr >= 2) {
+    ah += `<div class="al al-g"><i class="ti ti-chart-bar"></i><div><strong>Discarded Rate campak: ${dr.toFixed(2)}/100.000</strong> — Memenuhi target sensitivitas surveilans WHO (≥2/100.000). Kasus discarded: ${disc} dari ${rows.length} kasus.</div></div>`;
+  } else {
+    ah += `<div class="al al-a"><i class="ti ti-chart-bar"></i><div><strong>Discarded Rate campak: ${dr.toFixed(2)}/100.000</strong> — Belum memenuhi target WHO (≥2/100.000). Diperlukan peningkatan penemuan dan pemeriksaan kasus. Kasus discarded saat ini: ${disc}.</div></div>`;
+  }
+  document.getElementById('alerts').innerHTML = ah;
+
+  const sorted = Object.entries(kecSuspek).sort((a,b)=>b[1]-a[1]);
+  const maxN = sorted[0]?.[1]||1;
+  document.getElementById('kec-bars').innerHTML = sorted.map(([k,n]) => {
+    const st = kecStatusMap[k]?.status || 'Normal';
+    const col = statusColor(st);
+    const pct = Math.round(n/maxN*100);
+    const pc = kecStatusMap[k]?.posC||0;
+    return `<div class="bar-item">
+      <div class="bar-lbl" title="${k}">${k}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${col}"><span class="bar-num">${n}</span></div></div>
+      <div class="bar-right">${statusBadge(st)}${pc>0?`<span style="font-size:10px;background:var(--red-l);color:var(--red-d);padding:1px 5px;border-radius:3px;font-weight:600;">+${pc}</span>`:''}</div>
+    </div>`;
+  }).join('')||'<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">Tidak ada data</div>';
+
+  const labC = countBy(rows, r=>r.hasilC||'Menunggu');
+  const labK = Object.keys(labC);
+  mkDonut('pie-lab',labK,labK.map(k=>labC[k]),labK.map(k=>k==='Positif'?'#E24B4A':k==='Negatif'?'#1D9E75':k==='Lisis'?'#EF9F27':'#378ADD'),'pie-lab-leg');
+  const jkC = countBy(rows, r=>r.jk==='L'?'Laki-laki':'Perempuan');
+  mkDonut('pie-sex',Object.keys(jkC),Object.values(jkC),['#378ADD','#D4537E'],'pie-sex-leg');
+  const imunC = countBy(rows, r=>normImun(r.mr1));
+  const imunK = Object.keys(imunC);
+  mkDonut('pie-imun',imunK,imunK.map(k=>imunC[k]),imunK.map(k=>k==='Sudah'?'#1D9E75':k==='Belum'?'#E24B4A':'#888780'),'pie-imun-leg');
+  const sNorm = s => { if(!s)return 'Lainnya'; const l=s.toLowerCase(); if(l.includes('puskesmas'))return 'Puskesmas'; if(l.includes('rs')||l.includes('rumah sakit'))return 'RS'; return 'Lainnya'; };
+  const sC = countBy(rows, r=>sNorm(r.sumber));
+  mkDonut('pie-sumber',Object.keys(sC),Object.values(sC),['#0f6e56','#378ADD','#EF9F27'],'pie-sumber-leg');
+
+  document.getElementById('tbl-recent').innerHTML = [...rows].slice(-5).reverse().map(r=>
+    `<tr><td class="tm">${r.noEpid}</td>
+     <td style="font-weight:600;white-space:nowrap;cursor:pointer;color:var(--green);text-decoration:underline;" onclick="showDetail(${ALL.indexOf(r)})">${r.nama}</td>
+     <td class="tc">${r.tahun} th</td><td>${r.kecamatan||'—'}</td>
+     <td style="font-size:11px">${r.tglDemam||'—'}</td>
+     <td>${labBadge(r.hasilC)}</td><td>${labBadge(r.hasilR)}</td></tr>`
+  ).join('');
+}
+
+function initMap() {
+  if (!mapInst) {
+    mapInst = L.map('map').setView([-2.5,114.0],8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:18}).addTo(mapInst);
+  }
+  renderMap();
+  setTimeout(()=>mapInst.invalidateSize(),300);
+}
+
+function renderMap() {
+  mapMarkers.forEach(m=>m.remove()); mapMarkers=[];
+  const flt = document.getElementById('peta-filter')?.value||'semua';
+  let rows = ALL;
+  if (flt==='Positif') rows=rows.filter(r=>r.hasilC==='Positif');
+  else if (flt==='Negatif') rows=rows.filter(r=>r.hasilC==='Negatif');
+  else if (flt==='pending') rows=rows.filter(r=>!r.hasilC||r.hasilC==='');
+
+  // Status selalu dihitung dari ALL (bukan filtered) agar akurat
+  const kecList = [...new Set(ALL.filter(r=>r.kecamatan).map(r=>r.kecamatan))];
+  const kecSuspekAll = countBy(ALL.filter(r=>r.kecamatan), r=>r.kecamatan);
+
+  kecList.forEach(kec => {
+    const c = KEC_COORDS[kec]; if(!c) return;
+    const stObj = hitungStatusKec(ALL, kec);
+    const { status, posC, posR, totalSuspek } = stObj;
+    const col = statusColor(status);
+    const rad = Math.max(10, Math.min(34, totalSuspek*1.6));
+    const kRows = ALL.filter(r=>r.kecamatan===kec);
+    const pend = kRows.filter(r=>!r.hasilC||r.hasilC==='').length;
+    const negatif = kRows.filter(r=>r.hasilC==='Negatif').length;
+    const laki = kRows.filter(r=>r.jk==='L').length;
+
+    const m = L.circleMarker([c.lat,c.lng],{radius:rad,fillColor:col,color:col,weight:2,opacity:1,fillOpacity:0.82}).addTo(mapInst);
+    m.bindTooltip(`<div style="font-family:sans-serif;min-width:210px;font-size:12px;">
+      <div style="font-weight:700;color:#0f6e56;font-size:13px;margin-bottom:5px;">Kec. ${kec}</div>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="color:#666;padding:2px 0">Total suspek</td><td style="font-weight:700;text-align:right">${totalSuspek}</td></tr>
+        <tr><td style="color:#E24B4A;padding:2px 0">IgM Campak positif</td><td style="font-weight:700;color:#E24B4A;text-align:right">${posC}</td></tr>
+        <tr><td style="color:#9932CC;padding:2px 0">IgM Rubela positif</td><td style="font-weight:700;color:#9932CC;text-align:right">${posR}</td></tr>
+        <tr><td style="color:#1D9E75;padding:2px 0">Negatif (discarded)</td><td style="font-weight:700;color:#1D9E75;text-align:right">${negatif}</td></tr>
+        <tr><td style="color:#378ADD;padding:2px 0">Menunggu lab</td><td style="font-weight:700;color:#378ADD;text-align:right">${pend}</td></tr>
+        <tr><td style="color:#666;padding:2px 0">L / P</td><td style="font-weight:700;text-align:right">${laki}/${kRows.length-laki}</td></tr>
+      </table>
+      <div style="margin-top:6px;padding:3px 8px;border-radius:4px;display:inline-block;font-size:11px;font-weight:700;background:${col}22;color:${col};">Status: ${status}</div>
+      <div style="font-size:10px;color:#888;margin-top:3px;">Berdasarkan DO pedoman campak-rubela</div>
+    </div>`,{permanent:false,direction:'top',offset:[0,-rad],opacity:.97});
+    m.on('click',()=>{
+      const desa=[...new Set(kRows.map(r=>r.desa).filter(Boolean))].join(', ');
+      const info=document.getElementById('map-info');
+      info.style.display='block'; info.style.borderLeftColor=col;
+      document.getElementById('map-info-title').innerHTML=`<span style="color:${col}">●</span> Kecamatan <strong>${kec}</strong> ${statusBadge(status)}`;
+      document.getElementById('map-info-stats').innerHTML=`
+        <div class="map-s"><div class="map-sl">Total Suspek</div><div class="map-sv" style="color:var(--green)">${totalSuspek}</div></div>
+        <div class="map-s"><div class="map-sl">IgM +Campak</div><div class="map-sv" style="color:#E24B4A">${posC}</div></div>
+        <div class="map-s"><div class="map-sl">IgM +Rubela</div><div class="map-sv" style="color:#9932CC">${posR}</div></div>
+        <div class="map-s"><div class="map-sl">Negatif</div><div class="map-sv" style="color:#1D9E75">${negatif}</div></div>
+        <div class="map-s"><div class="map-sl">Menunggu Lab</div><div class="map-sv" style="color:#378ADD">${pend}</div></div>
+        <div class="map-s" style="grid-column:1/-1"><div class="map-sl">Desa terdampak</div><div style="font-size:12px;font-weight:500;margin-top:2px;">${desa||'—'}</div></div>`;
+    });
+    mapMarkers.push(m);
+  });
+}
+
+// Ambil bulan (0-11) dari string tanggal DD/MM/YYYY
+function getBulan(tgl) {
+  if (!tgl) return -1;
+  const p = tgl.trim().split('/');
+  if (p.length < 2) return -1;
+  const b = parseInt(p[1]) - 1;
+  return (b >= 0 && b < 12) ? b : -1;
+}
+
+function renderGrafik() {
+  const rows=ALL;
+  // Bulan diambil dari tglDemam (DD/MM/YYYY) — akurat
+  // Kolom r[8] di spreadsheet bukan bulan kejadian, tapi usia bayi dalam bulan
+  const pb=Array(12).fill(0), ppb=Array(12).fill(0);
+  rows.forEach(r=>{
+    const b = getBulan(r.tglDemam);
+    if(b >= 0){ pb[b]++; if(r.hasilC==='Positif') ppb[b]++; }
+  });
+  // Hanya tampilkan bulan yang benar-benar ada kasusnya
+  const bulanAktif=pb.map((v,i)=>v>0?i:-1).filter(i=>i>=0);
+  const labelsBulan=bulanAktif.map(i=>MONTHS_S[i]);
+  const dataBulan=bulanAktif.map(i=>pb[i]);
+  const dataPosC=bulanAktif.map(i=>ppb[i]);
+  if(charts['ch-bulan']){charts['ch-bulan'].destroy();}
+  charts['ch-bulan']=new Chart(document.getElementById('ch-bulan'),{type:'bar',
+    data:{labels:labelsBulan,datasets:[
+      {label:'Total Suspek',data:dataBulan,backgroundColor:'rgba(15,110,86,.7)',borderRadius:4,borderSkipped:false},
+      {label:'Positif Campak',data:dataPosC,backgroundColor:'rgba(226,75,74,.8)',borderRadius:4,borderSkipped:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12}}},
+      scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{beginAtZero:true,ticks:{font:{size:11}}}}}});
+
+  const kg={'<1 th':0,'1–4 th':0,'5–11 th':0,'12–17 th':0,'18–29 th':0,'≥30 th':0};
+  rows.forEach(r=>{const u=r.tahun;if(u===0)kg['<1 th']++;else if(u<=4)kg['1–4 th']++;else if(u<=11)kg['5–11 th']++;else if(u<=17)kg['12–17 th']++;else if(u<=29)kg['18–29 th']++;else kg['≥30 th']++;});
+  if(charts['ch-usia']){charts['ch-usia'].destroy();}
+  charts['ch-usia']=new Chart(document.getElementById('ch-usia'),{type:'bar',
+    data:{labels:Object.keys(kg),datasets:[{label:'Kasus',data:Object.values(kg),
+      backgroundColor:['#0f6e56','#1D9E75','#5DCAA5','#EF9F27','#D85A30','#E24B4A'],borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:11}},grid:{display:false}},y:{beginAtZero:true,ticks:{font:{size:11}}}}}});
+
+  const epiMap={};
+  rows.forEach(r=>{if(r.tglRuam)epiMap[r.tglRuam]=(epiMap[r.tglRuam]||0)+1;});
+  const epiK=Object.keys(epiMap).sort((a,b)=>{const pa=a.split('/'),pb=b.split('/');return new Date(+pa[2],+pa[1]-1,+pa[0])-new Date(+pb[2],+pb[1]-1,+pb[0]);});
+  if(charts['ch-epi']){charts['ch-epi'].destroy();}
+  charts['ch-epi']=new Chart(document.getElementById('ch-epi'),{type:'bar',
+    data:{labels:epiK,datasets:[{label:'Kasus',data:epiK.map(k=>epiMap[k]),backgroundColor:'rgba(15,110,86,.7)',borderRadius:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:9},maxRotation:60,autoSkip:true,maxTicksLimit:20},grid:{display:false}},y:{beginAtZero:true,ticks:{font:{size:11},stepSize:1}}}}});
+
+  const rsY=rows.filter(r=>r.rs==='Ya').length;
+  if(charts['ch-rs']){charts['ch-rs'].destroy();}
+  charts['ch-rs']=new Chart(document.getElementById('ch-rs'),{type:'doughnut',
+    data:{labels:['Rawat Inap RS','Rawat Jalan'],datasets:[{data:[rsY,rows.length-rsY],backgroundColor:['#E24B4A','#1D9E75'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}}}});
+}
+
+function populateFilters() {
+  const kecs=[...new Set(ALL.map(r=>r.kecamatan).filter(Boolean))].sort();
+  document.getElementById('f-kec').innerHTML='<option value="">Semua Kecamatan</option>'+kecs.map(k=>`<option>${k}</option>`).join('');
+}
+
+function renderTabel() {
+  const kecF=document.getElementById('f-kec').value;
+  const labCF=document.getElementById('f-labc').value;
+  const labRF=document.getElementById('f-labr').value;
+  const jkF=document.getElementById('f-jk').value;
+  const mr1F=document.getElementById('f-mr1').value;
+  const srch=document.getElementById('f-search').value.toLowerCase();
+  let rows=ALL;
+  if(kecF) rows=rows.filter(r=>r.kecamatan===kecF);
+  if(labCF==='pending') rows=rows.filter(r=>!r.hasilC||r.hasilC==='');
+  else if(labCF) rows=rows.filter(r=>r.hasilC===labCF);
+  if(labRF==='pending') rows=rows.filter(r=>!r.hasilR||r.hasilR==='');
+  else if(labRF) rows=rows.filter(r=>r.hasilR===labRF);
+  if(jkF) rows=rows.filter(r=>r.jk===jkF);
+  if(mr1F) rows=rows.filter(r=>r.mr1===mr1F);
+  if(srch) rows=rows.filter(r=>(r.nama+r.noEpid+r.desa+r.kecamatan).toLowerCase().includes(srch));
+  document.getElementById('f-cnt').textContent=`${rows.length} kasus`;
+  document.getElementById('cnt-tbl').textContent=rows.length;
+  document.getElementById('tbl-body').innerHTML=rows.length?rows.map((r,i)=>
+    `<tr>
+      <td class="tc" style="color:var(--text3);font-size:11px;">${i+1}</td>
+      <td class="tm">${r.noEpid}</td>
+      <td style="font-weight:600;white-space:nowrap;min-width:140px">
+        <span style="cursor:pointer;color:var(--green);text-decoration:underline;" onclick="showDetail(${ALL.indexOf(r)})">${r.nama}</span>
+      </td>
+      <td class="tc">${r.jk}</td>
+      <td class="tc">${r.tahun} th</td>
+      <td style="white-space:nowrap">${r.kecamatan||'—'}</td>
+      <td style="font-size:11px;color:var(--text2);min-width:100px">${r.desa||'—'}</td>
+      <td style="font-size:11px;white-space:nowrap">${r.sumber||'—'}</td>
+      <td style="font-size:11px;white-space:nowrap">${r.tglDemam||'—'}</td>
+      <td style="font-size:11px;white-space:nowrap">${r.tglRuam||'—'}</td>
+      <td class="tc">${r.rs==='Ya'?'<span class="badge bp">Ya</span>':'<span class="badge bn">Tidak</span>'}</td>
+      <td class="tc">${imunBadge(r.mr1)}</td>
+      <td class="tc">${imunBadge(r.mr2)}</td>
+      <td style="font-size:11px;white-space:nowrap">${r.tglAmbil||'—'}</td>
+      <td>${labBadge(r.hasilC)}</td>
+      <td>${labBadge(r.hasilR)}</td>
+      <td><button class="btn-ref" style="padding:4px 8px;font-size:11px;" onclick="showDetail(${ALL.indexOf(r)})"><i class="ti ti-eye"></i></button></td>
+    </tr>`
+  ).join(''):'<tr><td colspan="17" style="text-align:center;padding:2rem;color:var(--text3);">Tidak ada data yang sesuai filter</td></tr>';
+}
+
+function showDetail(idx) {
+  const r=ALL[idx]; if(!r) return;
+  document.getElementById('modal-title').innerHTML=`<i class="ti ti-user" style="color:var(--green);margin-right:6px;"></i>${r.nama} <span style="font-size:12px;font-weight:400;font-family:monospace;">${r.noEpid}</span>`;
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-section">
+      <div class="modal-sec-title">Data Pasien</div>
+      <div class="dr">
+        <div class="dr-lbl">Jenis Kelamin</div><div class="dr-val">${r.jk==='L'?'👦 Laki-laki':'👧 Perempuan'}</div>
+        <div class="dr-lbl">Umur</div><div class="dr-val"><strong>${r.tahun} tahun</strong></div>
+        <div class="dr-lbl">Nama Orangtua</div><div class="dr-val">${r.ortu||'—'}</div>
+        <div class="dr-lbl">Alamat</div><div class="dr-val">${r.alamat||'—'}</div>
+        <div class="dr-lbl">Desa</div><div class="dr-val">${r.desa||'—'}</div>
+        <div class="dr-lbl">Kecamatan</div><div class="dr-val"><strong>${r.kecamatan||'—'}</strong></div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Data Klinis</div>
+      <div class="dr">
+        <div class="dr-lbl">Sumber Laporan</div><div class="dr-val">${r.sumber||'—'}</div>
+        <div class="dr-lbl">Tgl Terima</div><div class="dr-val">${r.tglTerima||'—'}</div>
+        <div class="dr-lbl">Tgl Demam</div><div class="dr-val">${r.tglDemam||'—'}</div>
+        <div class="dr-lbl">Tgl Ruam</div><div class="dr-val">${r.tglRuam||'—'}</div>
+        <div class="dr-lbl">Dirawat RS</div><div class="dr-val">${r.rs==='Ya'?'<span class="badge bp">Ya</span>':'<span class="badge bn">Tidak</span>'}</div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Status Imunisasi</div>
+      <div class="dr">
+        <div class="dr-lbl">MR-1</div><div class="dr-val">${imunBadge(r.mr1)} <span style="font-size:11px;color:var(--text3)">${r.mr1}</span></div>
+        <div class="dr-lbl">MR-2</div><div class="dr-val">${imunBadge(r.mr2)} <span style="font-size:11px;color:var(--text3)">${r.mr2}</span></div>
+        <div class="dr-lbl">Campak BIAS</div><div class="dr-val">${imunBadge(r.bias)} <span style="font-size:11px;color:var(--text3)">${r.bias}</span></div>
+        <div class="dr-lbl">MMR</div><div class="dr-val">${imunBadge(r.mmr)} <span style="font-size:11px;color:var(--text3)">${r.mmr||'—'}</span></div>
+        <div class="dr-lbl">Tgl MMR</div><div class="dr-val">${r.tglMmr||'—'}</div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Hasil Laboratorium</div>
+      <div class="dr">
+        <div class="dr-lbl">Tgl Ambil Spesimen</div><div class="dr-val">${r.tglAmbil||'—'}</div>
+        <div class="dr-lbl">Tgl Kirim Spesimen</div><div class="dr-val">${r.tglKirim||'—'}</div>
+        <div class="dr-lbl">Tgl Terima Hasil</div><div class="dr-val">${r.tglHasil||'—'}</div>
+        <div class="dr-lbl">Hasil Campak (IgM)</div><div class="dr-val">${labBadge(r.hasilC)}</div>
+        <div class="dr-lbl">Hasil Rubella (IgM)</div><div class="dr-val">${labBadge(r.hasilR)}</div>
+      </div>
+    </div>`;
+  document.getElementById('modal-bg').classList.add('on');
+}
+
+function closeModal(e) {
+  if (!e||e.target===document.getElementById('modal-bg'))
+    document.getElementById('modal-bg').classList.remove('on');
+}
+
+function renderLaporan() {
+  const rows=ALL; if(!rows.length) return;
+  const posC=rows.filter(r=>r.hasilC==='Positif').length;
+  const posR=rows.filter(r=>r.hasilR==='Positif').length;
+  const pend=rows.filter(r=>!r.hasilC||r.hasilC==='').length;
+  const negatif=rows.filter(r=>r.hasilC==='Negatif').length;
+  const disc=hitungDiscarded(rows);
+  const dr=discardedRate(rows);
+  const drOk=dr>=2;
+
+  // Status KLB per kecamatan berdasarkan DO pedoman
+  const kecSuspek=countBy(rows.filter(r=>r.kecamatan),r=>r.kecamatan);
+  const kecList=[...Object.keys(kecSuspek)];
+  const klbPastiKec=kecList.filter(k=>hitungStatusKec(rows,k).status==='KLB Pasti');
+  const klbSuspekKec=kecList.filter(k=>hitungStatusKec(rows,k).status==='KLB Suspek');
+
+  const laki=rows.filter(r=>r.jk==='L').length;
+  const pusk=rows.filter(r=>(r.sumber||'').toLowerCase().includes('puskesmas')).length;
+  document.getElementById('lap-ringkasan').innerHTML=`
+    <p style="margin-bottom:8px;"><strong>Periode:</strong> Tahun 2026 · Kabupaten Kapuas, Kalimantan Tengah.</p>
+    <p style="margin-bottom:8px;">Jumlah kasus suspek campak-rubela yang dilaporkan: <strong>${rows.length} kasus</strong> dari <strong>${kecList.length} kecamatan</strong>. Konfirmasi laboratorium: <strong>${posC} IgM campak positif</strong> dan <strong>${posR} IgM rubela positif</strong>. Sebanyak <strong>${negatif} kasus dinyatakan negatif</strong> (discarded) dan <strong>${pend} kasus</strong> masih menunggu hasil.</p>
+    <p style="margin-bottom:8px;">Distribusi jenis kelamin: <strong>${laki} laki-laki</strong> (${rows.length?Math.round(laki/rows.length*100):0}%) dan <strong>${rows.length-laki} perempuan</strong>. Sumber laporan terbanyak dari Puskesmas (<strong>${pusk} kasus</strong>).</p>
+    <p style="margin-bottom:8px;padding:8px 12px;border-radius:6px;${drOk?'background:var(--green-l);color:var(--green-d);':'background:var(--amber-l);color:var(--amber-d);'}">
+      ${drOk?'✅':'⚠️'} <strong>Discarded Rate Campak: ${dr.toFixed(2)} per 100.000 penduduk</strong>
+      (${disc} kasus discarded dari total penduduk ${TOTAL_POP_CAMPAK().toLocaleString('id-ID')} jiwa).
+      ${drOk?'Telah memenuhi target sensitivitas surveilans WHO (≥2/100.000). Kasus suspek banyak dengan hasil lab negatif menunjukkan kinerja surveilans yang baik.':'Belum memenuhi target WHO (≥2/100.000). Diperlukan peningkatan penemuan kasus aktif.'}
+    </p>
+    ${klbPastiKec.length?`<p style="color:var(--red-d);font-weight:600;margin-bottom:8px;background:var(--red-l);padding:8px 12px;border-radius:6px;">🔴 KLB PASTI: <strong>${klbPastiKec.join(', ')}</strong> — memenuhi DO KLB Pasti (≥5 suspek/4 minggu + ≥2 IgM positif). Respons outbreak segera diperlukan.</p>`:''}
+    ${klbSuspekKec.length?`<p style="color:#C0392B;font-weight:500;margin-bottom:8px;background:#FFF5F5;padding:8px 12px;border-radius:6px;">🟠 KLB SUSPEK: <strong>${klbSuspekKec.join(', ')}</strong> — ada jendela ≥5 suspek dalam 4 minggu. Investigasi lapangan dan pengambilan spesimen diperlukan untuk konfirmasi.</p>`:''}
+    ${!klbPastiKec.length&&!klbSuspekKec.length?`<p style="color:var(--green-d);margin-bottom:8px;">✅ Tidak ada kecamatan berstatus KLB berdasarkan DO pedoman campak-rubela. Kasus suspek yang banyak namun hasil lab negatif mencerminkan kinerja surveilans yang baik, bukan KLB.</p>`:''}
+    <p style="font-size:11px;color:var(--text3);">Dibuat otomatis · ${new Date().toLocaleString('id-ID')} · Berdasarkan Definisi Operasional Pedoman Campak-Rubela Kemenkes RI</p>`;
+
+  const sorted=Object.entries(kecSuspek).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('tbl-rekap').innerHTML=sorted.map(([k,n])=>{
+    const stObj=hitungStatusKec(rows,k);
+    const st=stObj.status;
+    const pc=stObj.posC;
+    const pr=stObj.posR;
+    const pd=rows.filter(r=>r.kecamatan===k&&(!r.hasilC||r.hasilC==='')).length;
+    const kDisc=rows.filter(r=>r.kecamatan===k&&r.hasilC==='Negatif'&&r.hasilR==='Negatif').length;
+    const kPop=PENDUDUK_CAMPAK[k]||0;
+    const kDr=kPop>0?(kDisc/kPop*100000).toFixed(2):'—';
+    return `<tr><td style="font-weight:500">${k}</td><td class="tc"><strong>${n}</strong></td>
+      <td class="tc">${pc?`<span style="color:var(--red-d);font-weight:600">${pc}</span>`:'—'}</td>
+      <td class="tc">${pr?`<span style="color:var(--purple);font-weight:600">${pr}</span>`:'—'}</td>
+      <td class="tc">${pd?`<span style="color:var(--blue-d)">${pd}</span>`:'—'}</td>
+      <td class="tc"><strong>${kDisc}</strong></td>
+      <td class="tc"><span style="font-weight:600;color:${Number(kDr)>=2?'var(--green-d)':'var(--amber-d)'}">${kDr}</span></td>
+      <td>${statusBadge(st)}</td></tr>`;
+  }).join('');
+
+  document.getElementById('tbl-bulan').innerHTML=MONTHS.map((m,i)=>{
+    const br=rows.filter(r=>getBulan(r.tglDemam)===i); if(!br.length) return '';
+    const lk=br.filter(r=>r.jk==='L').length;
+    return `<tr><td style="font-weight:500">${m}</td><td class="tc"><strong>${br.length}</strong></td>
+      <td class="tc">${br.filter(r=>r.hasilC==='Positif').length||'—'}</td>
+      <td class="tc">${br.filter(r=>r.hasilR==='Positif').length||'—'}</td>
+      <td class="tc">${br.filter(r=>!r.hasilC||r.hasilC==='').length||'—'}</td>
+      <td class="tc">${lk}</td><td class="tc">${br.length-lk}</td></tr>`;
+  }).filter(Boolean).join('');
+}
+
+function renderDiscardedCard(rows) {
+  const dr = discardedRate(rows);
+  const disc = hitungDiscarded(rows);
+  const ok = dr >= 2;
+  return `<div class="mc ${ok?'cg':'ca'}">
+    <div class="mc-lbl"><i class="ti ti-chart-bar"></i> Discarded Rate</div>
+    <div class="mc-val ${ok?'g':'a'}">${dr.toFixed(2)}</div>
+    <div class="mc-sub">${ok?'✅':'⚠️'} ${ok?'Memenuhi':'Belum memenuhi'} target ≥2/100.000 · ${disc} kasus discarded</div>
+  </div>`;
+}
+
+function renderPengaturan() {
+  const grid = document.getElementById('pop-grid');
+  if (!grid) return;
+
+  // Cari container pengaturan
+  const container = document.getElementById('tab-pengaturan');
+
+  // Hapus admin-bar lama jika ada
+  const oldBar = container.querySelector('.admin-bar');
+  if(oldBar) oldBar.remove();
+
+  if(!adminUnlocked){
+    // Tampilkan lock screen, sembunyikan grid & tombol simpan
+    grid.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:2rem 1rem;">
+        <div style="font-size:3rem;margin-bottom:10px;">🔐</div>
+        <div style="font-size:15px;font-weight:700;color:var(--green);margin-bottom:8px;">Area Admin Terkunci</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.7;">
+          Data penduduk hanya dapat diubah oleh administrator.<br>Masukkan PIN untuk melanjutkan.
+        </p>
+        <button onclick="showPinModal('login')" style="padding:10px 28px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">
+          🔓 Masuk sebagai Admin
+        </button>
+        <p style="font-size:11px;color:var(--text3);margin-top:14px;">Hubungi administrator jika lupa PIN.</p>
+      </div>`;
+    document.getElementById('save-msg').style.display='none';
+    // Sembunyikan tombol simpan
+    const saveBtn = container.querySelector('button[onclick="savePenduduk()"]');
+    if(saveBtn) saveBtn.style.display='none';
+    updateAdminSummary();
+    return;
+  }
+
+  // Tampilkan admin bar
+  const adminBar = document.createElement('div');
+  adminBar.className = 'admin-bar';
+  adminBar.style.marginBottom = '12px';
+  adminBar.innerHTML = `
+    <div class="admin-bar-info"><span class="abadge">✅ ADMIN</span> Anda masuk sebagai Administrator · Data dapat diedit</div>
+    <div style="display:flex;gap:8px;">
+      <button class="change-pin-btn" onclick="showPinModal('change')">🔑 Ganti PIN</button>
+      <button class="lock-btn" onclick="lockAdmin()">🔒 Kunci Kembali</button>
+    </div>`;
+  container.insertBefore(adminBar, container.firstChild);
+
+  // Tampilkan grid input
+  grid.innerHTML = Object.entries(PENDUDUK_CAMPAK).map(([k,v]) =>
+    `<div style="display:flex;align-items:center;gap:8px;background:var(--gray-l);border:1px solid var(--border);border-radius:7px;padding:6px 10px;">
+      <label style="font-size:12px;color:var(--text2);flex:1;">${k}</label>
+      <input type="number" id="pop_${k.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'X')}"
+        value="${v}" min="0"
+        style="width:100px;font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:5px;text-align:right;font-family:inherit;background:var(--card);color:var(--text);">
+    </div>`
+  ).join('');
+
+  // Tampilkan tombol simpan
+  const saveBtn2 = container.querySelector('button[onclick="savePenduduk()"]');
+  if(saveBtn2) saveBtn2.style.display='';
+
+  updateAdminSummary();
+}
+
+function updateAdminSummary() {
+  const pop = TOTAL_POP_CAMPAK();
+  const dr = discardedRate(ALL);
+  const ok = dr >= 2;
+  document.getElementById('adm-total-pop').textContent = pop.toLocaleString('id-ID');
+  document.getElementById('adm-disc-rate').textContent = dr.toFixed(2);
+  document.getElementById('adm-status-val').textContent = ok ? '✅ Terpenuhi' : '⚠️ Belum';
+  document.getElementById('adm-status-val').style.color = ok ? 'var(--green)' : 'var(--amber-d)';
+  document.getElementById('adm-status-mc').className = `mc ${ok?'cg':'ca'}`;
+}
+
+function savePenduduk() {
+  Object.keys(PENDUDUK_CAMPAK).forEach(k => {
+    const id = 'pop_' + k.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'X');
+    const inp = document.getElementById(id);
+    if (inp) PENDUDUK_CAMPAK[k] = parseInt(inp.value) || 0;
+  });
+  // Simpan ke localStorage agar konsisten di semua tab
+  try { localStorage.setItem(CAMPAK_POP_KEY, JSON.stringify(PENDUDUK_CAMPAK)); } catch(e){}
+  updateAdminSummary();
+  renderDashboard();
+  renderLaporan();
+  adminUnlocked = false;
+  renderPengaturan();
+  setTimeout(()=>alert('✅ Data penduduk tersimpan. Dashboard dan Laporan telah diperbarui.'),100);
+}
+
+function exportCSV() {
+  if(!ALL.length){alert('Tidak ada data');return;}
+  const h=['No','No Epid','Nama','JK','Umur','Kecamatan','Desa','Sumber','Tgl Demam','Tgl Ruam','RS','MR-1','MR-2','BIAS','MMR','Tgl Ambil','Tgl Kirim','Tgl Hasil','Hasil Campak','Hasil Rubella'];
+  const csv=[h.join(','),...ALL.map(r=>[r.no,r.noEpid,`"${r.nama}"`,r.jk,r.tahun,`"${r.kecamatan}"`,`"${r.desa}"`,`"${r.sumber}"`,r.tglDemam,r.tglRuam,r.rs,r.mr1,r.mr2,r.bias,r.mmr,r.tglAmbil,r.tglKirim,r.tglHasil,r.hasilC,r.hasilR].join(','))].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`Campak_Rubella_Kapuas_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+}
+</script>
+</body>
+</html>
