@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Sistem Surveilans — Kabupaten Kapuas 2026</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#0F6E56;--green-d:#085041;--green-l:#E1F5EE;--green-m:#1D9E75;
+  --teal:#5DCAA5;--teal-l:#E1F5EE;
+  --amber:#EF9F27;--amber-l:#FAEEDA;--amber-d:#854F0B;
+  --blue:#378ADD;--blue-l:#E6F1FB;--blue-d:#185FA5;
+  --red:#E24B4A;--red-l:#FCEBEB;--red-d:#A32D2D;
+  --bg:#F2F6F4;--card:#fff;--border:#E0E8E4;
+  --text:#1A1A18;--text2:#5A5A57;--text3:#9B9B97;
+  --r:14px;
+}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* HEADER */
+.hdr{
+  background:linear-gradient(135deg,#064535 0%,#0F6E56 55%,#1D9E75 100%);
+  color:#fff;padding:0 2rem;
+  display:flex;align-items:center;gap:16px;
+  height:68px;position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 16px rgba(0,0,0,.22);
+}
+.hdr-logo{
+  width:42px;height:42px;background:rgba(255,255,255,.15);
+  border-radius:12px;display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(255,255,255,.25);flex-shrink:0;
+}
+.hdr-logo i{font-size:22px;color:#9FE1CB;}
+.hdr-text h1{font-size:16px;font-weight:700;line-height:1.25;}
+.hdr-text p{font-size:11px;opacity:.72;margin-top:1px;}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.hdr-pill{
+  background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);
+  border-radius:20px;padding:5px 14px;font-size:12px;font-weight:500;
+  display:flex;align-items:center;gap:6px;
+}
+.dot{width:7px;height:7px;border-radius:50%;background:#9FE1CB;animation:pulse .9s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* HERO */
+.hero{
+  background:linear-gradient(160deg,#0a5240 0%,#0F6E56 40%,#1D9E75 100%);
+  color:#fff;padding:3rem 2rem 4rem;text-align:center;position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;inset:0;
+  background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
+  border-radius:20px;padding:5px 16px;font-size:12px;font-weight:500;
+  margin-bottom:1.25rem;position:relative;
+}
+.hero h2{font-size:2rem;font-weight:800;line-height:1.2;margin-bottom:.75rem;position:relative;}
+.hero p{font-size:15px;opacity:.82;max-width:520px;margin:0 auto;line-height:1.7;position:relative;}
+
+/* STATS BAR */
+.stats-bar{
+  background:#fff;border-bottom:1px solid var(--border);
+  display:flex;justify-content:center;flex-wrap:wrap;gap:0;
+}
+.stat-item{
+  padding:1rem 2rem;text-align:center;border-right:1px solid var(--border);
+  flex:1;min-width:120px;
+}
+.stat-item:last-child{border-right:none;}
+.stat-val{font-size:22px;font-weight:700;color:var(--green);}
+.stat-lbl{font-size:11px;color:var(--text3);margin-top:2px;}
+
+/* MAIN */
+.main{max-width:900px;margin:0 auto;padding:2.5rem 1.5rem 4rem;}
+.section-lbl{
+  font-size:11px;font-weight:700;letter-spacing:.08em;
+  color:var(--green);text-transform:uppercase;margin-bottom:1rem;
+  display:flex;align-items:center;gap:8px;
+}
+.section-lbl::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* CARDS */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1.25rem;margin-bottom:2.5rem;}
+.app-card{
+  background:var(--card);border-radius:var(--r);border:1px solid var(--border);
+  overflow:hidden;transition:box-shadow .2s,transform .2s;
+  text-decoration:none;color:inherit;display:flex;flex-direction:column;
+}
+.app-card:hover{box-shadow:0 8px 32px rgba(15,110,86,.14);transform:translateY(-2px);}
+.card-top{padding:1.5rem 1.5rem 1.25rem;display:flex;align-items:flex-start;gap:14px;}
+.card-icon{
+  width:48px;height:48px;border-radius:12px;display:flex;
+  align-items:center;justify-content:center;flex-shrink:0;
+}
+.card-icon.afp{background:var(--blue-l);}
+.card-icon.afp i{font-size:24px;color:var(--blue-d);}
+.card-icon.campak{background:var(--teal-l);}
+.card-icon.campak i{font-size:24px;color:var(--green);}
+.card-title{font-size:17px;font-weight:700;margin-bottom:3px;}
+.card-sub{font-size:12px;color:var(--text3);}
+.card-body{padding:0 1.5rem 1.25rem;flex:1;}
+.card-desc{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:1rem;}
+.card-tags{display:flex;flex-wrap:wrap;gap:6px;}
+.tag{
+  font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;
+}
+.tag.green{background:var(--teal-l);color:var(--green-d);}
+.tag.blue{background:var(--blue-l);color:var(--blue-d);}
+.tag.amber{background:var(--amber-l);color:var(--amber-d);}
+.card-footer{
+  padding:1rem 1.5rem;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:#FAFCFB;
+}
+.open-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--green);color:#fff;border:none;
+  padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;
+  cursor:pointer;transition:background .15s;text-decoration:none;
+}
+.open-btn:hover{background:var(--green-d);}
+.open-btn i{font-size:15px;}
+.card-status{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text3);}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#1D9E75;}
+
+
+/* PUSKESMAS LIST */
+.pkm-item{display:flex;align-items:center;gap:12px;padding:.85rem 1.25rem;border-bottom:0.5px solid var(--border);border-right:0.5px solid var(--border);transition:background .15s;}
+.pkm-item:hover{background:var(--teal-l);}
+.pkm-no{width:26px;height:26px;border-radius:50%;background:var(--teal-l);color:var(--green-d);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pkm-name{font-size:13px;font-weight:500;margin:0 0 2px;}
+.pkm-kec{font-size:11px;color:var(--text3);margin:0;display:flex;align-items:center;gap:3px;}
+
+
+.card-icon.difteri{background:#FAEEDA;}
+.card-icon.difteri i{font-size:24px;color:#854F0B;}
+.card-icon.pertusis{background:#FBEAF0;}
+.card-icon.pertusis i{font-size:24px;color:#993556;}
+.app-card.coming{opacity:.82;cursor:default;}
+.app-card.coming:hover{box-shadow:none;transform:none;}
+.coming-badge{display:inline-flex;align-items:center;gap:5px;background:#FAEEDA;color:#854F0B;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;}
+.soon-btn{display:inline-flex;align-items:center;gap:6px;background:var(--border);color:var(--text3);border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:not-allowed;}
+#map{width:100%;height:420px;border-radius:var(--r);border:1px solid var(--border);overflow:hidden;}
+
+/* INFO BOX */
+.info-box{
+  background:var(--blue-l);border:1px solid #B5D4F4;border-radius:var(--r);
+  padding:1.25rem 1.5rem;margin-bottom:2.5rem;
+  display:flex;align-items:flex-start;gap:12px;
+}
+.info-box i{font-size:20px;color:var(--blue-d);flex-shrink:0;margin-top:1px;}
+.info-box p{font-size:13px;color:var(--blue-d);line-height:1.7;}
+
+/* FOOTER */
+footer{
+  text-align:center;padding:2rem 1rem;
+  border-top:1px solid var(--border);background:#fff;
+  font-size:12px;color:var(--text3);
+}
+footer span{color:var(--green);font-weight:600;}
+
+@media(max-width:600px){
+  .hdr{padding:0 1rem;}
+  .hdr-right{display:none;}
+  .hero{padding:2rem 1rem 3rem;}
+  .hero h2{font-size:1.5rem;}
+  .main{padding:1.5rem 1rem 3rem;}
+  .cards{grid-template-columns:1fr;}
+  .stat-item{padding:.75rem 1rem;}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-logo"><i class="ti ti-heartbeat"></i></div>
+  <div class="hdr-text">
+    <h1>Surveilans Epidemiologi</h1>
+    <p>Dinas Kesehatan Kabupaten Kapuas</p>
+  </div>
+  <div class="hdr-right">
+    <div class="hdr-pill"><span class="dot"></span> Sistem Aktif</div>
+    <div class="hdr-pill"><i class="ti ti-calendar" style="font-size:13px;"></i> 2026</div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-badge"><i class="ti ti-shield-check" style="font-size:14px;"></i> Platform Resmi Dinas Kesehatan</div>
+  <h2>Sistem Informasi<br>Surveilans Penyakit</h2>
+  <p>Pemantauan dan analisis data surveilans epidemiologi terpadu untuk Kabupaten Kapuas tahun 2026</p>
+</section>
+
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-val">2</div>
+    <div class="stat-lbl">Modul Surveilans</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val">26</div>
+    <div class="stat-lbl">Puskesmas Aktif <span style="font-size:10px;color:var(--amber-d);background:var(--amber-l);padding:1px 6px;border-radius:10px;margin-left:2px;">+2 direncanakan</span></div>
+  </div>
+  <div class="stat-item" style="cursor:pointer;" onclick="var el=document.getElementById('rs-info');el.style.display=el.style.display==='flex'?'none':'flex'">
+    <div class="stat-val">2</div>
+    <div class="stat-lbl">Rumah Sakit <span style="font-size:10px;color:var(--blue-d);background:var(--blue-l);padding:1px 6px;border-radius:10px;margin-left:2px;">lihat ↓</span></div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val">Real-time</div>
+    <div class="stat-lbl">Pembaruan Data</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val">2026</div>
+    <div class="stat-lbl">Periode Aktif</div>
+  </div>
+</div>
+
+<div id="rs-info" style="display:none;background:#E6F1FB;border-bottom:1px solid #B5D4F4;padding:.8rem 2rem;gap:2rem;flex-wrap:wrap;justify-content:center;align-items:center;">
+  <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#185FA5;">
+    <i class="ti ti-building-hospital" style="font-size:17px;flex-shrink:0;"></i>
+    <span><strong>RSUD dr. H. Soemarno Sosroatmodjo</strong> &mdash; Kuala Kapuas</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#185FA5;">
+    <i class="ti ti-building-hospital" style="font-size:17px;flex-shrink:0;"></i>
+    <span><strong>RS Pratama Pujon</strong> &mdash; Pujon</span>
+  </div>
+</div>
+
+<main class="main">
+
+  <div class="info-box">
+    <i class="ti ti-info-circle"></i>
+    <p>Pilih modul surveilans di bawah untuk mengakses sistem. Pastikan perangkat Anda terhubung ke internet untuk memuat data dan peta secara optimal.</p>
+  </div>
+
+  <div class="section-lbl">Modul Surveilans</div>
+
+  <div class="cards">
+
+    <!-- AFP -->
+    <a class="app-card" href="surveilans-afp-kapuas2026-v4.html">
+      <div class="card-top">
+        <div class="card-icon afp">
+          <i class="ti ti-accessibility"></i>
+        </div>
+        <div>
+          <div class="card-title">Surveilans AFP</div>
+          <div class="card-sub">Acute Flaccid Paralysis</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="card-desc">Sistem pemantauan kasus lumpuh layuh mendadak (AFP) pada anak usia di bawah 15 tahun. Dilengkapi peta sebaran kasus, analisis Non-Polio AFP Rate, dan pelaporan per puskesmas.</p>
+        <div class="card-tags">
+          <span class="tag blue">Peta Interaktif</span>
+          <span class="tag green">Analisis NPAR</span>
+          <span class="tag amber">Laporan Bulanan</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="card-status">
+          <span class="status-dot"></span>
+          Sistem aktif
+        </div>
+        <span class="open-btn">Buka Aplikasi <i class="ti ti-arrow-right"></i></span>
+      </div>
+    </a>
+
+    <!-- CAMPAK RUBELLA -->
+    <a class="app-card" href="surveilans-campak-kapuas2026-v4.html">
+      <div class="card-top">
+        <div class="card-icon campak">
+          <i class="ti ti-virus"></i>
+        </div>
+        <div>
+          <div class="card-title">Surveilans Campak-Rubella</div>
+          <div class="card-sub">Measles & Rubella Surveillance</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="card-desc">Sistem pemantauan kasus campak dan rubella terintegrasi. Mencakup peta sebaran kasus, analisis cakupan imunisasi, deteksi KLB, dan pelaporan epidemiologi berbasis wilayah.</p>
+        <div class="card-tags">
+          <span class="tag blue">Peta Interaktif</span>
+          <span class="tag green">Deteksi KLB</span>
+          <span class="tag amber">Cakupan Imunisasi</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="card-status">
+          <span class="status-dot"></span>
+          Sistem aktif
+        </div>
+        <span class="open-btn">Buka Aplikasi <i class="ti ti-arrow-right"></i></span>
+      </div>
+    </a>
+
+
+    <!-- DIFTERI -->
+    <div class="app-card coming">
+      <div class="card-top">
+        <div class="card-icon difteri">
+          <i class="ti ti-lungs"></i>
+        </div>
+        <div>
+          <div class="card-title">Surveilans Difteri</div>
+          <div class="card-sub">Diphtheria Surveillance</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="card-desc">Sistem pemantauan kasus difteri berbasis wilayah. Mencakup peta sebaran kasus, analisis cakupan imunisasi DPT, deteksi KLB, dan pelaporan per puskesmas.</p>
+        <div class="card-tags">
+          <span class="tag blue">Peta Interaktif</span>
+          <span class="tag green">Deteksi KLB</span>
+          <span class="tag amber">Cakupan DPT</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="coming-badge"><i class="ti ti-clock" style="font-size:12px;"></i> Segera Hadir</span>
+        <span class="soon-btn"><i class="ti ti-lock" style="font-size:14px;"></i> Dalam Pengembangan</span>
+      </div>
+    </div>
+
+    <!-- PERTUSIS -->
+    <div class="app-card coming">
+      <div class="card-top">
+        <div class="card-icon pertusis">
+          <i class="ti ti-stethoscope"></i>
+        </div>
+        <div>
+          <div class="card-title">Surveilans Pertusis</div>
+          <div class="card-sub">Pertussis Surveillance</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="card-desc">Sistem pemantauan kasus pertusis (batuk rejan) terintegrasi. Mencakup peta sebaran kasus, analisis kelompok usia, deteksi KLB, dan pelaporan epidemiologi wilayah.</p>
+        <div class="card-tags">
+          <span class="tag blue">Peta Interaktif</span>
+          <span class="tag green">Analisis Usia</span>
+          <span class="tag amber">Laporan Bulanan</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="coming-badge"><i class="ti ti-clock" style="font-size:12px;"></i> Segera Hadir</span>
+        <span class="soon-btn"><i class="ti ti-lock" style="font-size:14px;"></i> Dalam Pengembangan</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="section-lbl" style="margin-top:2.5rem;">Daftar Puskesmas</div>
+
+  <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:2rem;">
+    <div style="padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <i class="ti ti-map-pin" style="font-size:16px;color:var(--green);"></i>
+        <span style="font-size:13px;font-weight:600;">26 Puskesmas Aktif</span>
+        <span style="font-size:11px;color:var(--amber-d);background:var(--amber-l);padding:2px 8px;border-radius:10px;">+2 direncanakan</span>
+      </div>
+      <input id="pkm-search" type="text" placeholder="Cari nama puskesmas atau kecamatan..." style="font-size:13px;border:1px solid var(--border);border-radius:8px;padding:6px 12px;outline:none;width:280px;max-width:100%;" oninput="filterPkm(this.value)"/>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));" id="pkm-grid">
+
+      <div class="pkm-item" data-name="selat" data-kec="selat">
+        <span class="pkm-no">1</span>
+        <div><p class="pkm-name">Puskesmas Selat</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Selat</p></div>
+      </div>
+      <div class="pkm-item" data-name="melati" data-kec="selat">
+        <span class="pkm-no">2</span>
+        <div><p class="pkm-name">Puskesmas Melati</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Selat</p></div>
+      </div>
+      <div class="pkm-item" data-name="pulau telo" data-kec="selat">
+        <span class="pkm-no">3</span>
+        <div><p class="pkm-name">Puskesmas Pulau Telo</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Selat</p></div>
+      </div>
+      <div class="pkm-item" data-name="panamas" data-kec="selat">
+        <span class="pkm-no">4</span>
+        <div><p class="pkm-name">Puskesmas Panamas</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Selat</p></div>
+      </div>
+      <div class="pkm-item" data-name="barimba" data-kec="kapuas hilir">
+        <span class="pkm-no">5</span>
+        <div><p class="pkm-name">Puskesmas Barimba</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Kapuas Hilir</p></div>
+      </div>
+      <div class="pkm-item" data-name="pulau kupang" data-kec="bataguh">
+        <span class="pkm-no">6</span>
+        <div><p class="pkm-name">Puskesmas Pulau Kupang</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Bataguh</p></div>
+      </div>
+      <div class="pkm-item" data-name="terusan tengah" data-kec="bataguh">
+        <span class="pkm-no">7</span>
+        <div><p class="pkm-name">Puskesmas Terusan Tengah</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Bataguh</p></div>
+      </div>
+      <div class="pkm-item" data-name="anjir serapat" data-kec="kapuas timur">
+        <span class="pkm-no">8</span>
+        <div><p class="pkm-name">Puskesmas Anjir Serapat</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Kapuas Timur</p></div>
+      </div>
+      <div class="pkm-item" data-name="tamban catur" data-kec="tamban catur">
+        <span class="pkm-no">9</span>
+        <div><p class="pkm-name">Puskesmas Tamban Catur</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Tamban Catur</p></div>
+      </div>
+      <div class="pkm-item" data-name="tamban baru" data-kec="tamban catur">
+        <span class="pkm-no">10</span>
+        <div><p class="pkm-name">Puskesmas Tamban Baru</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Tamban Catur</p></div>
+      </div>
+      <div class="pkm-item" data-name="lupak" data-kec="kapuas kuala">
+        <span class="pkm-no">11</span>
+        <div><p class="pkm-name">Puskesmas Lupak</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Kapuas Kuala</p></div>
+      </div>
+      <div class="pkm-item" data-name="basarang" data-kec="basarang">
+        <span class="pkm-no">12</span>
+        <div><p class="pkm-name">Puskesmas Basarang</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Basarang</p></div>
+      </div>
+      <div class="pkm-item" data-name="mandomai" data-kec="kapuas barat">
+        <span class="pkm-no">13</span>
+        <div><p class="pkm-name">Puskesmas Mandomai</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Kapuas Barat</p></div>
+      </div>
+      <div class="pkm-item" data-name="sei tatas" data-kec="pulau petak">
+        <span class="pkm-no">14</span>
+        <div><p class="pkm-name">Puskesmas Sei Tatas</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Pulau Petak</p></div>
+      </div>
+      <div class="pkm-item" data-name="palingkau" data-kec="kapuas murung">
+        <span class="pkm-no">15</span>
+        <div><p class="pkm-name">Puskesmas Palingkau</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Kapuas Murung</p></div>
+      </div>
+      <div class="pkm-item" data-name="dadahup" data-kec="dadahup">
+        <span class="pkm-no">16</span>
+        <div><p class="pkm-name">Puskesmas Dadahup</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Dadahup</p></div>
+      </div>
+      <div class="pkm-item" data-name="talekung punei" data-kec="dadahup">
+        <span class="pkm-no">17</span>
+        <div><p class="pkm-name">Puskesmas Talekung Punei</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Dadahup</p></div>
+      </div>
+      <div class="pkm-item" data-name="palangkau" data-kec="kapuas murung">
+        <span class="pkm-no">18</span>
+        <div><p class="pkm-name">Puskesmas Palangkau</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Kapuas Murung</p></div>
+      </div>
+      <div class="pkm-item" data-name="lamunti" data-kec="mantangai">
+        <span class="pkm-no">19</span>
+        <div><p class="pkm-name">Puskesmas Lamunti</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Mantangai</p></div>
+      </div>
+      <div class="pkm-item" data-name="danau rawah" data-kec="mantangai">
+        <span class="pkm-no">20</span>
+        <div><p class="pkm-name">Puskesmas Danau Rawah</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Mantangai</p></div>
+      </div>
+      <div class="pkm-item" data-name="mantangai" data-kec="mantangai">
+        <span class="pkm-no">21</span>
+        <div><p class="pkm-name">Puskesmas Mantangai</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Mantangai</p></div>
+      </div>
+      <div class="pkm-item" data-name="timpah" data-kec="timpah">
+        <span class="pkm-no">22</span>
+        <div><p class="pkm-name">Puskesmas Timpah</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Timpah</p></div>
+      </div>
+      <div class="pkm-item" data-name="pujon" data-kec="kapuas tengah">
+        <span class="pkm-no">23</span>
+        <div><p class="pkm-name">Puskesmas Pujon</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Kapuas Tengah</p></div>
+      </div>
+      <div class="pkm-item" data-name="jangkang" data-kec="pasak talawang">
+        <span class="pkm-no">24</span>
+        <div><p class="pkm-name">Puskesmas Jangkang</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Pasak Talawang</p></div>
+      </div>
+      <div class="pkm-item" data-name="sei hanyo" data-kec="kapuas hulu">
+        <span class="pkm-no">25</span>
+        <div><p class="pkm-name">Puskesmas Sei Hanyo</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Kapuas Hulu</p></div>
+      </div>
+      <div class="pkm-item" data-name="sei pinang" data-kec="mandau talawang">
+        <span class="pkm-no">26</span>
+        <div><p class="pkm-name">Puskesmas Sei Pinang</p><p class="pkm-kec"><i class="ti ti-map-pin" style="font-size:11px;"></i> Kec. Mandau Talawang</p></div>
+      </div>
+
+    </div>
+    <div id="pkm-empty" style="display:none;padding:1.5rem;text-align:center;font-size:13px;color:var(--text3);">Tidak ditemukan hasil pencarian.</div>
+  </div>
+
+  <div class="section-lbl" style="margin-top:2.5rem;">Peta Wilayah Puskesmas</div>
+
+  <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:2rem;">
+    <div style="padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+      <i class="ti ti-map" style="font-size:16px;color:var(--green);"></i>
+      <span style="font-size:13px;font-weight:600;">Sebaran 26 Puskesmas — Kabupaten Kapuas</span>
+      <span style="font-size:11px;color:var(--text3);margin-left:auto;">Klik marker untuk detail</span>
+    </div>
+    <div id="map"></div>
+  </div>
+
+  <div class="section-lbl">Panduan Penggunaan</div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem;">
+    <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;">
+      <div style="width:36px;height:36px;background:var(--teal-l);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:.75rem;">
+        <i class="ti ti-device-desktop" style="font-size:18px;color:var(--green);"></i>
+      </div>
+      <p style="font-size:13px;font-weight:600;margin-bottom:4px;">Akses Optimal</p>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6;">Gunakan browser Chrome atau Firefox terbaru untuk tampilan terbaik.</p>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;">
+      <div style="width:36px;height:36px;background:var(--blue-l);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:.75rem;">
+        <i class="ti ti-wifi" style="font-size:18px;color:var(--blue-d);"></i>
+      </div>
+      <p style="font-size:13px;font-weight:600;margin-bottom:4px;">Koneksi Internet</p>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6;">Diperlukan koneksi internet untuk memuat peta dan data real-time.</p>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;">
+      <div style="width:36px;height:36px;background:var(--amber-l);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:.75rem;">
+        <i class="ti ti-device-mobile" style="font-size:18px;color:var(--amber-d);"></i>
+      </div>
+      <p style="font-size:13px;font-weight:600;margin-bottom:4px;">Responsif</p>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6;">Dapat diakses melalui komputer, tablet, maupun smartphone.</p>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <p style="margin-bottom:4px;"><span>Dinas Kesehatan Kabupaten Kapuas</span> &mdash; Sistem Surveilans Epidemiologi 2026</p>
+  <p>Dibangun untuk pemantauan kesehatan masyarakat yang lebih baik</p>
+</footer>
+
+<script>
+function filterPkm(q){
+  var items=document.querySelectorAll('.pkm-item');
+  var empty=document.getElementById('pkm-empty');
+  var v=q.toLowerCase().trim();
+  var found=0;
+  items.forEach(function(el){
+    var match=el.dataset.name.includes(v)||el.dataset.kec.includes(v);
+    el.style.display=match?'':'none';
+    if(match)found++;
+  });
+  empty.style.display=found===0?'block':'none';
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var map = L.map('map').setView([-2.95, 114.55], 9);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'&copy; OpenStreetMap contributors',maxZoom:18
+}).addTo(map);
+
+var icon = L.divIcon({
+  className:'',
+  html:'<div style="width:28px;height:28px;background:#0F6E56;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg></div>',
+  iconSize:[28,28],iconAnchor:[14,28],popupAnchor:[0,-30]
+});
+
+var pkm = [
+  {n:"Puskesmas Selat",k:"Kec. Selat",lat:-2.9878,lng:114.5878},
+  {n:"Puskesmas Melati",k:"Kec. Selat",lat:-2.9650,lng:114.5600},
+  {n:"Puskesmas Pulau Telo",k:"Kec. Selat",lat:-3.0100,lng:114.5200},
+  {n:"Puskesmas Panamas",k:"Kec. Selat",lat:-3.0350,lng:114.6100},
+  {n:"Puskesmas Barimba",k:"Kec. Kapuas Hilir",lat:-3.1200,lng:114.3800},
+  {n:"Puskesmas Pulau Kupang",k:"Kec. Bataguh",lat:-3.0700,lng:114.4500},
+  {n:"Puskesmas Terusan Tengah",k:"Kec. Bataguh",lat:-3.0400,lng:114.4200},
+  {n:"Puskesmas Anjir Serapat",k:"Kec. Kapuas Timur",lat:-3.0000,lng:114.6800},
+  {n:"Puskesmas Tamban Catur",k:"Kec. Tamban Catur",lat:-3.1500,lng:114.5500},
+  {n:"Puskesmas Tamban Baru",k:"Kec. Tamban Catur",lat:-3.1700,lng:114.5200},
+  {n:"Puskesmas Lupak",k:"Kec. Kapuas Kuala",lat:-3.2200,lng:114.3200},
+  {n:"Puskesmas Basarang",k:"Kec. Basarang",lat:-2.9200,lng:114.5000},
+  {n:"Puskesmas Mandomai",k:"Kec. Kapuas Barat",lat:-2.8500,lng:114.3500},
+  {n:"Puskesmas Sei Tatas",k:"Kec. Pulau Petak",lat:-2.9000,lng:114.4200},
+  {n:"Puskesmas Palingkau",k:"Kec. Kapuas Murung",lat:-2.7800,lng:114.5500},
+  {n:"Puskesmas Dadahup",k:"Kec. Dadahup",lat:-2.8800,lng:114.7200},
+  {n:"Puskesmas Talekung Punei",k:"Kec. Dadahup",lat:-2.9200,lng:114.7500},
+  {n:"Puskesmas Palangkau",k:"Kec. Kapuas Murung",lat:-2.7500,lng:114.5800},
+  {n:"Puskesmas Lamunti",k:"Kec. Mantangai",lat:-2.6500,lng:114.5200},
+  {n:"Puskesmas Danau Rawah",k:"Kec. Mantangai",lat:-2.6200,lng:114.4800},
+  {n:"Puskesmas Mantangai",k:"Kec. Mantangai",lat:-2.6000,lng:114.5500},
+  {n:"Puskesmas Timpah",k:"Kec. Timpah",lat:-2.4500,lng:114.6500},
+  {n:"Puskesmas Pujon",k:"Kec. Kapuas Tengah",lat:-2.3000,lng:114.7000},
+  {n:"Puskesmas Jangkang",k:"Kec. Pasak Talawang",lat:-2.2000,lng:114.4500},
+  {n:"Puskesmas Sei Hanyo",k:"Kec. Kapuas Hulu",lat:-2.0500,lng:114.6000},
+  {n:"Puskesmas Sei Pinang",k:"Kec. Mandau Talawang",lat:-2.1500,lng:114.3500}
+];
+
+pkm.forEach(function(p,i){
+  L.marker([p.lat,p.lng],{icon:icon})
+    .addTo(map)
+    .bindPopup('<div style="font-family:sans-serif;min-width:160px;"><div style="font-weight:600;font-size:13px;margin-bottom:2px;">'+(i+1)+'. '+p.n+'</div><div style="font-size:12px;color:#666;display:flex;align-items:center;gap:4px;"><span>&#128205;</span>'+p.k+'</div></div>');
+});
+</script>
+</body>
+</html>
