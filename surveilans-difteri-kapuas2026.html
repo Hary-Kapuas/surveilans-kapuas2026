@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Surveilans Difteri — Kabupaten Kapuas 2026</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --teal:#1A7A6E;--teal-d:#0F5248;--teal-l:#E4F5F3;--teal-m:#2AA898;
+  --amber:#EF9F27;--amber-l:#FAEEDA;--amber-d:#854F0B;
+  --blue:#378ADD;--blue-l:#E6F1FB;--blue-d:#185FA5;
+  --red:#E24B4A;--red-l:#FCEBEB;--red-d:#A32D2D;
+  --orange:#F57C00;--orange-l:#FFF3E0;
+  --green:#0F6E56;--green-l:#E1F5EE;--green-m:#1D9E75;
+  --purple:#7C4DBA;--purple-l:#F0EBF9;
+  --bg:#F2F7F6;--border:#D8ECEA;
+  --text:#141C1B;--text2:#4A5655;--text3:#8EA8A5;
+  --card:#fff;--r:14px;
+}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* HEADER */
+.hdr{background:linear-gradient(135deg,#0A3D36 0%,#0F5248 45%,#1A7A6E 100%);color:#fff;padding:0 2rem;display:flex;align-items:center;gap:16px;height:68px;position:sticky;top:0;z-index:200;box-shadow:0 2px 16px rgba(0,0,0,.22);}
+.hdr-logo{width:42px;height:42px;background:rgba(255,255,255,.12);border-radius:12px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.2);flex-shrink:0;}
+.hdr-logo i{font-size:22px;color:#7ADFD6;}
+.hdr-text h1{font-size:16px;font-weight:700;line-height:1.25;}
+.hdr-text p{font-size:11px;opacity:.7;margin-top:1px;}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.hdr-pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px;cursor:pointer;transition:background .15s;text-decoration:none;color:#fff;}
+.hdr-pill:hover{background:rgba(255,255,255,.22);}
+.dot-live{width:7px;height:7px;border-radius:50%;flex-shrink:0;animation:pulse .9s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* TABS */
+.tab-bar{background:#fff;border-bottom:2px solid var(--border);display:flex;overflow-x:auto;padding:0 2rem;position:sticky;top:68px;z-index:190;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.tab-btn{display:flex;align-items:center;gap:7px;padding:15px 20px;font-size:13px;font-weight:600;color:var(--text3);border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;background:none;border-top:none;border-left:none;border-right:none;}
+.tab-btn:hover{color:var(--teal);}
+.tab-btn.active{color:var(--teal);border-bottom-color:var(--teal);}
+.tab-btn i{font-size:16px;}
+.tab-badge{background:var(--teal-l);color:var(--teal-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+.main{max-width:1020px;margin:0 auto;padding:2rem 1.5rem 4rem;}
+
+.section-lbl{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--teal);text-transform:uppercase;margin-bottom:1rem;display:flex;align-items:center;gap:8px;}
+.section-lbl::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* STAT CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:2rem;}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;}
+.stat-card .val{font-size:30px;font-weight:800;line-height:1;margin-bottom:.3rem;}
+.stat-card .lbl{font-size:12px;color:var(--text3);font-weight:500;}
+.stat-card.teal .val{color:var(--teal);}
+.stat-card.amber .val{color:var(--amber-d);}
+.stat-card.orange .val{color:var(--orange);}
+.stat-card.red .val{color:var(--red-d);}
+.stat-card.green .val{color:var(--green);}
+.stat-card.blue .val{color:var(--blue-d);}
+.stat-card.purple .val{color:var(--purple);}
+
+/* ALERT */
+.alert{border-radius:var(--r);padding:1rem 1.25rem;display:flex;gap:10px;align-items:flex-start;margin-bottom:1.25rem;}
+.alert i{font-size:18px;flex-shrink:0;margin-top:1px;}
+.alert p{font-size:13px;line-height:1.7;}
+.alert-info{background:var(--blue-l);border:1px solid #B5D4F4;}
+.alert-info i,.alert-info p{color:var(--blue-d);}
+.alert-warn{background:var(--amber-l);border:1px solid #F5CCA0;}
+.alert-warn i,.alert-warn p{color:var(--amber-d);}
+.alert-danger{background:var(--red-l);border:1px solid #F5AAAA;}
+.alert-danger i,.alert-danger p{color:var(--red-d);}
+.alert-success{background:var(--green-l);border:1px solid #A8DBC7;}
+.alert-success i,.alert-success p{color:var(--green);}
+
+/* CHART */
+.chart-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:1.5rem;}
+.chart-head h3{font-size:14px;font-weight:700;margin-bottom:.25rem;}
+.chart-head p{font-size:11px;color:var(--text3);margin-bottom:1rem;}
+canvas{max-width:100%;}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+table thead th{padding:9px 12px;background:#F5FBFA;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);text-align:left;white-space:nowrap;}
+table tbody td{padding:10px 12px;border-bottom:.5px solid var(--border);vertical-align:middle;}
+table tbody tr:last-child td{border-bottom:none;}
+table tbody tr:hover{background:#F8FDFC;}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+.badge-suspek{background:#FAEEDA;color:#854F0B;}
+.badge-probable{background:#FFE0B2;color:#E65100;}
+.badge-konfirmasi{background:var(--red-l);color:var(--red-d);}
+.badge-bukan{background:var(--green-l);color:var(--green);}
+
+/* GEJALA CHIPS */
+.gejala-chip{display:inline-flex;align-items:center;gap:3px;background:var(--teal-l);color:var(--teal-d);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:600;margin:1px;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:'Plus Jakarta Sans',sans-serif;}
+.btn-teal{background:var(--teal);color:#fff;}
+.btn-teal:hover{background:var(--teal-d);}
+.btn-outline{background:#fff;border:1.5px solid var(--border);color:var(--text2);}
+.btn-outline:hover{border-color:var(--teal);color:var(--teal);}
+.btn-green{background:var(--green);color:#fff;}
+.btn-blue{background:var(--blue);color:#fff;}
+.btn-sm{padding:7px 13px;font-size:12px;}
+
+/* LOADING */
+.loading-overlay{position:fixed;inset:0;background:rgba(242,247,246,.9);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+.loading-overlay.hide{display:none;}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay p{font-size:14px;font-weight:600;color:var(--teal);}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--text3);}
+.empty-state i{font-size:40px;margin-bottom:1rem;display:block;}
+.empty-state p{font-size:13px;}
+
+/* MAP */
+#difteri-map{width:100%;height:420px;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:center;justify-content:center;padding:1rem;}
+.modal-overlay.open{display:flex;}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.modal-head{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-head h3{font-size:15px;font-weight:700;}
+.modal-close{width:30px;height:30px;border-radius:7px;background:#FAFAFA;border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text3);}
+.modal-close:hover{background:var(--red-l);color:var(--red);}
+.modal-body{padding:1.5rem;}
+
+/* DETAIL TABLE */
+.dtbl{width:100%;border-collapse:collapse;font-size:13px;}
+.dtbl tr td:first-child{padding:5px 8px;color:var(--text3);font-weight:500;width:45%;vertical-align:top;font-size:12px;border-bottom:.5px solid var(--border);}
+.dtbl tr td:last-child{padding:5px 8px;font-weight:500;font-size:12px;border-bottom:.5px solid var(--border);}
+
+/* KRITERIA */
+.kriteria-box{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:1.25rem;}
+.kriteria-box h4{font-size:14px;font-weight:700;margin-bottom:.75rem;display:flex;align-items:center;gap:8px;}
+.kriteria-list{display:flex;flex-direction:column;gap:.45rem;}
+.kriteria-item{display:flex;gap:10px;font-size:13px;line-height:1.6;}
+.k-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+
+@media(max-width:640px){
+  .hdr{padding:0 1rem;}
+  .main{padding:1rem 1rem 3rem;}
+  .stat-grid{grid-template-columns:repeat(2,1fr);}
+  .tab-bar{padding:0 .75rem;}
+  .tab-btn{padding:12px 12px;font-size:12px;}
+}
+@media print{.hdr,.tab-bar,.no-print{display:none!important;}.tab-content{display:block!important;}body{background:#fff;}}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay hide" id="loading">
+  <div class="spinner"></div>
+  <p id="loading-msg">Memuat data dari Google Sheets...</p>
+</div>
+
+<header class="hdr">
+  <div class="hdr-logo"><i class="ti ti-shield-plus"></i></div>
+  <div class="hdr-text">
+    <h1>Surveilans Difteri</h1>
+    <p>Dinas Kesehatan Kabupaten Kapuas — 2026</p>
+  </div>
+  <div class="hdr-right">
+    <div class="hdr-pill" id="sync-btn" onclick="fetchData(true)">
+      <span class="dot-live" id="sync-dot" style="background:#7ADFD6;"></span>
+      <span id="sync-label">Muat Data</span>
+    </div>
+    <a href="index.html" class="hdr-pill no-print">
+      <i class="ti ti-arrow-left" style="font-size:13px;"></i> Portal PD3I
+    </a>
+  </div>
+</header>
+
+<nav class="tab-bar no-print">
+  <button class="tab-btn active" onclick="switchTab('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
+  <button class="tab-btn" onclick="switchTab('daftar',this)"><i class="ti ti-list"></i> Daftar Kasus <span class="tab-badge" id="badge-total">0</span></button>
+  <button class="tab-btn" onclick="switchTab('peta',this)"><i class="ti ti-map"></i> Peta Sebaran</button>
+  <button class="tab-btn" onclick="switchTab('laporan',this)"><i class="ti ti-file-report"></i> Laporan</button>
+  <button class="tab-btn" onclick="switchTab('panduan',this)"><i class="ti ti-book"></i> Panduan Klasifikasi</button>
+</nav>
+
+<!-- ===== DASHBOARD ===== -->
+<div id="tab-dashboard" class="tab-content active">
+<div class="main">
+
+  <div id="alert-klb" class="alert alert-danger" style="display:none;">
+    <i class="ti ti-alert-triangle"></i>
+    <p><strong>⚠ PERINGATAN KLB:</strong> Terdapat ≥1 kasus konfirmasi difteri. Segera laporkan ke Dinas Kesehatan Provinsi dan lakukan penyelidikan epidemiologi.</p>
+  </div>
+
+  <div id="alert-sync" class="alert alert-info" style="display:none;">
+    <i class="ti ti-info-circle"></i>
+    <p id="alert-sync-msg"></p>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem;">
+    <div class="section-lbl" style="margin:0;flex:1;">Ringkasan Kasus Difteri — 2026</div>
+    <div style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px;" id="last-sync-info">
+      <i class="ti ti-database" style="font-size:12px;"></i> Belum ada data
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card teal"><div class="val" id="s-total">0</div><div class="lbl">Total Kasus</div></div>
+    <div class="stat-card amber"><div class="val" id="s-suspek">0</div><div class="lbl">Suspek</div></div>
+    <div class="stat-card orange"><div class="val" id="s-probable">0</div><div class="lbl">Probable</div></div>
+    <div class="stat-card red"><div class="val" id="s-konfirmasi">0</div><div class="lbl">Konfirmasi</div></div>
+    <div class="stat-card green"><div class="val" id="s-bukan">0</div><div class="lbl">Bukan Difteri</div></div>
+    <div class="stat-card blue"><div class="val" id="s-bulan">0</div><div class="lbl">Bulan Ini (<span id="s-nama-bulan"></span>)</div></div>
+    <div class="stat-card purple"><div class="val" id="s-meninggal">0</div><div class="lbl">Meninggal (CFR)</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:1.5rem;margin-bottom:1.5rem;">
+    <div class="chart-wrap"><div class="chart-head"><h3>Tren Kasus per Bulan</h3><p>Berdasarkan tanggal mulai sakit</p></div><canvas id="chartTren" height="200"></canvas></div>
+    <div class="chart-wrap"><div class="chart-head"><h3>Distribusi Kelompok Usia</h3><p>Berdasarkan usia penderita</p></div><canvas id="chartUsia" height="200"></canvas></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:1.5rem;margin-bottom:1.5rem;">
+    <div class="chart-wrap"><div class="chart-head"><h3>Proporsi Klasifikasi</h3><p>Suspek / Probable / Konfirmasi</p></div><canvas id="chartKlas" height="200"></canvas></div>
+    <div class="chart-wrap"><div class="chart-head"><h3>Status Imunisasi Difteri</h3><p>Kelengkapan imunisasi DPT-HB-HiB pada kasus</p></div><canvas id="chartImun" height="200"></canvas></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:1.5rem;margin-bottom:1.5rem;">
+    <div class="chart-wrap"><div class="chart-head"><h3>Gejala Klinis Terbanyak</h3><p>Frekuensi gejala pada kasus</p></div><canvas id="chartGejala" height="200"></canvas></div>
+    <div class="chart-wrap"><div class="chart-head"><h3>Outcome Kasus</h3><p>Kondisi akhir penderita</p></div><canvas id="chartOutcome" height="200"></canvas></div>
+  </div>
+
+  <div class="section-lbl">5 Kasus Terbaru</div>
+  <div class="tbl-wrap" style="margin-bottom:1.5rem;">
+    <table>
+      <thead>
+        <tr><th>No. Epid</th><th>Nama Penderita</th><th>JK</th><th>Usia</th><th>Puskesmas</th><th>Tgl Sakit</th><th>Gejala Utama</th><th>Klasifikasi</th><th>Outcome</th></tr>
+      </thead>
+      <tbody id="tbl-recent">
+        <tr><td colspan="9"><div class="empty-state"><i class="ti ti-cloud-download"></i><p>Klik <strong>Muat Data</strong> untuk memuat dari Google Sheets.</p></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</div>
+
+<!-- ===== DAFTAR KASUS ===== -->
+<div id="tab-daftar" class="tab-content">
+<div class="main">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
+    <div class="section-lbl" style="margin:0;flex:1;">Semua Kasus Difteri</div>
+    <input type="text" id="q-cari" placeholder="Cari nama / no. epid..." style="font-size:13px;border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;outline:none;width:200px;font-family:inherit;" oninput="renderDaftar()"/>
+    <select id="q-klas" style="font-size:13px;border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;outline:none;background:#fff;font-family:inherit;" onchange="renderDaftar()">
+      <option value="">Semua Klasifikasi</option>
+      <option>Suspek</option><option>Probable</option><option>Konfirmasi</option><option>Bukan Difteri</option>
+    </select>
+    <select id="q-pkm" style="font-size:13px;border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;outline:none;background:#fff;font-family:inherit;max-width:200px;" onchange="renderDaftar()">
+      <option value="">Semua Puskesmas</option>
+    </select>
+    <button class="btn btn-outline btn-sm no-print" onclick="fetchData(true)"><i class="ti ti-refresh"></i> Refresh</button>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>No</th><th>No. Epid</th><th>Nama Penderita</th><th>JK</th><th>Usia</th>
+          <th>Kecamatan</th><th>Puskesmas</th><th>Tgl Terima</th><th>Tgl Sakit</th>
+          <th>Demam</th><th>Pseudomembran</th><th>Leher Bengkak</th><th>Sesak Nafas</th>
+          <th>Imunisasi</th><th>Spesimen</th><th>Outcome</th><th>Klasifikasi</th><th>Detail</th>
+        </tr>
+      </thead>
+      <tbody id="tbl-daftar">
+        <tr><td colspan="18"><div class="empty-state"><i class="ti ti-table-off"></i><p>Belum ada data.</p></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ===== PETA ===== -->
+<div id="tab-peta" class="tab-content">
+<div class="main">
+  <div class="section-lbl">Peta Sebaran Kasus Difteri — Kab. Kapuas 2026</div>
+  <div class="alert alert-info" style="margin-bottom:1rem;">
+    <i class="ti ti-info-circle"></i>
+    <p>
+      <span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;"><span style="width:12px;height:12px;border-radius:50%;background:#E24B4A;display:inline-block;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span> Konfirmasi</span>
+      <span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;"><span style="width:12px;height:12px;border-radius:50%;background:#F57C00;display:inline-block;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span> Probable</span>
+      <span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;"><span style="width:12px;height:12px;border-radius:50%;background:#EF9F27;display:inline-block;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span> Suspek</span>
+      <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:50%;background:#1D9E75;display:inline-block;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span> Bukan Difteri</span>
+    </p>
+  </div>
+  <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;">
+    <div id="difteri-map"></div>
+  </div>
+</div>
+</div>
+
+<!-- ===== LAPORAN ===== -->
+<div id="tab-laporan" class="tab-content">
+<div class="main">
+  <div class="section-lbl">Ekspor & Laporan</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.25rem;margin-bottom:2rem;">
+    <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;">
+      <div style="width:44px;height:44px;background:var(--teal-l);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;"><i class="ti ti-file-spreadsheet" style="font-size:22px;color:var(--teal-d);"></i></div>
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:5px;">Ekspor CSV</h3>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:1rem;">Unduh semua kasus sesuai kolom sheet Difteri.</p>
+      <button class="btn btn-teal btn-sm" onclick="exportCSV()"><i class="ti ti-download"></i> Unduh CSV</button>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;">
+      <div style="width:44px;height:44px;background:var(--blue-l);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;"><i class="ti ti-printer" style="font-size:22px;color:var(--blue-d);"></i></div>
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:5px;">Cetak Rekap</h3>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:1rem;">Cetak ringkasan kasus untuk pelaporan rutin.</p>
+      <button class="btn btn-blue btn-sm" onclick="window.print()"><i class="ti ti-printer"></i> Cetak</button>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;">
+      <div style="width:44px;height:44px;background:var(--green-l);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;"><i class="ti ti-refresh" style="font-size:22px;color:var(--green);"></i></div>
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:5px;">Refresh dari Sheets</h3>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:1rem;">Muat ulang data terbaru dari Google Sheets Difteri.</p>
+      <button class="btn btn-green btn-sm" onclick="fetchData(true)"><i class="ti ti-cloud-download"></i> Muat Ulang</button>
+    </div>
+  </div>
+
+  <div class="section-lbl">Rekap per Puskesmas</div>
+  <div class="tbl-wrap" style="margin-bottom:2rem;">
+    <table>
+      <thead><tr><th>Puskesmas</th><th>Suspek</th><th>Probable</th><th>Konfirmasi</th><th>Bukan Difteri</th><th>Meninggal</th><th>Total</th></tr></thead>
+      <tbody id="tbl-rekap-pkm"><tr><td colspan="7"><div class="empty-state" style="padding:1.5rem;"><p>Belum ada data.</p></div></td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="section-lbl">Rekap per Kecamatan</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Kecamatan</th><th>Suspek</th><th>Probable</th><th>Konfirmasi</th><th>Bukan Difteri</th><th>Total</th></tr></thead>
+      <tbody id="tbl-rekap-kec"><tr><td colspan="6"><div class="empty-state" style="padding:1.5rem;"><p>Belum ada data.</p></div></td></tr></tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ===== PANDUAN ===== -->
+<div id="tab-panduan" class="tab-content">
+<div class="main">
+  <div class="alert alert-warn">
+    <i class="ti ti-alert-circle"></i>
+    <p>Klasifikasi otomatis mengacu pada <strong>Pedoman Surveilans Difteri Kemenkes RI</strong> dan <strong>definisi kasus WHO</strong>. Setiap kasus konfirmasi difteri wajib dilaporkan dalam 24 jam.</p>
+  </div>
+
+  <div class="section-lbl">Bagaimana Sistem Mengklasifikasi Kasus</div>
+  <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:1.5rem;">
+    <p style="font-size:13px;color:var(--text2);line-height:1.9;margin-bottom:.75rem;">Sistem membaca kolom-kolom sheet Difteri dan menentukan klasifikasi otomatis:</p>
+    <div style="display:flex;flex-direction:column;gap:.6rem;">
+      <div style="display:flex;gap:10px;font-size:13px;align-items:flex-start;">
+        <span style="background:var(--red-l);color:var(--red-d);font-weight:700;padding:2px 10px;border-radius:20px;font-size:11px;flex-shrink:0;margin-top:1px;">1</span>
+        <span><strong>Spesimen positif (kol. AV–AX) + Pseudomembran (kol. AG)</strong> → <span class="badge badge-konfirmasi">Konfirmasi</span></span>
+      </div>
+      <div style="display:flex;gap:10px;font-size:13px;align-items:flex-start;">
+        <span style="background:var(--red-l);color:var(--red-d);font-weight:700;padding:2px 10px;border-radius:20px;font-size:11px;flex-shrink:0;margin-top:1px;">2</span>
+        <span><strong>Pseudomembran + Leher Bengkak/Sesak Nafas</strong> → <span class="badge badge-probable">Probable</span></span>
+      </div>
+      <div style="display:flex;gap:10px;font-size:13px;align-items:flex-start;">
+        <span style="background:var(--amber-l);color:var(--amber-d);font-weight:700;padding:2px 10px;border-radius:20px;font-size:11px;flex-shrink:0;margin-top:1px;">3</span>
+        <span><strong>Ada tanggal sakit + sakit tenggorokan</strong> → <span class="badge badge-suspek">Suspek</span></span>
+      </div>
+      <div style="display:flex;gap:10px;font-size:13px;align-items:flex-start;">
+        <span style="background:var(--green-l);color:var(--green);font-weight:700;padding:2px 10px;border-radius:20px;font-size:11px;flex-shrink:0;margin-top:1px;">4</span>
+        <span><strong>Spesimen negatif + tidak ada gejala khas</strong> → <span class="badge badge-bukan">Bukan Difteri</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-lbl">Definisi Operasional</div>
+  <div style="display:flex;flex-direction:column;gap:1.25rem;margin-bottom:2rem;">
+    <div class="kriteria-box" style="border-left:4px solid var(--amber);">
+      <h4><span class="badge badge-suspek">SUSPEK</span></h4>
+      <div class="kriteria-list">
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--amber);"></div><span>Penyakit dengan onset akut, berupa laringitis, nasofaringitis, atau tonsilitis <strong>DAN</strong> pseudomembran yang melekat pada tenggorokan/amandel</span></div>
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--amber);"></div><span>Belum ada konfirmasi laboratorium</span></div>
+      </div>
+    </div>
+    <div class="kriteria-box" style="border-left:4px solid var(--orange);">
+      <h4><span class="badge badge-probable">PROBABLE</span></h4>
+      <div class="kriteria-list">
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--orange);"></div><span>Memenuhi kriteria suspek <strong>DAN</strong> salah satu: kontak dengan kasus konfirmasi, atau ada leher bengkak (bull neck), atau sesak nafas karena pseudomembran</span></div>
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--orange);"></div><span><strong>ATAU</strong> kasus meninggal dengan gambaran klinis difteri tanpa konfirmasi laboratorium</span></div>
+      </div>
+    </div>
+    <div class="kriteria-box" style="border-left:4px solid var(--red);">
+      <h4><span class="badge badge-konfirmasi">KONFIRMASI</span></h4>
+      <div class="kriteria-list">
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--red);"></div><span>Memenuhi kriteria suspek/probable <strong>DAN</strong> isolasi <em>Corynebacterium diphtheriae</em> dari spesimen swab tenggorokan/hidung</span></div>
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--red);"></div><span><strong>ATAU</strong> kasus epidemiologis yang berhubungan dengan kasus konfirmasi laboratorium</span></div>
+      </div>
+    </div>
+    <div class="kriteria-box" style="border-left:4px solid var(--green-m);">
+      <h4><span class="badge badge-bukan">BUKAN DIFTERI</span></h4>
+      <div class="kriteria-list">
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--green-m);"></div><span>Hasil laboratorium negatif dan tidak memenuhi kriteria klinis, atau ditemukan diagnosis lain</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-lbl">Kriteria KLB Difteri</div>
+  <div class="kriteria-box">
+    <h4><i class="ti ti-alert-triangle" style="color:var(--red);"></i> Penetapan KLB</h4>
+    <div class="kriteria-list">
+      <div class="kriteria-item"><div class="k-dot" style="background:var(--red);"></div><span>≥1 kasus konfirmasi difteri di wilayah yang sebelumnya bebas difteri</span></div>
+      <div class="kriteria-item"><div class="k-dot" style="background:var(--red);"></div><span>Peningkatan kasus ≥2× dibanding periode sama tahun sebelumnya</span></div>
+      <div class="kriteria-item"><div class="k-dot" style="background:var(--red);"></div><span>Ditemukan kluster ≥2 kasus di satu wilayah dalam waktu singkat</span></div>
+    </div>
+  </div>
+
+  <div style="margin-top:1.5rem;" class="alert alert-warn">
+    <i class="ti ti-vaccine"></i>
+    <p><strong>Respons KLB Difteri:</strong> Pemberian ADS (Anti Difteri Serum) segera, antibiotik (eritromisin/penisilin), imunisasi massal dengan DPT/DT/Td di wilayah terdampak, dan surveilans kontak erat selama 7 hari.</p>
+  </div>
+</div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-head"><h3>Detail Kasus Difteri</h3><button class="modal-close" onclick="document.getElementById('modal').classList.remove('open')"><i class="ti ti-x"></i></button></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div style="padding:1rem 1.5rem;border-top:1px solid var(--border);">
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('modal').classList.remove('open')"><i class="ti ti-x"></i> Tutup</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// =============================================
+// KONFIGURASI — Sheet Difteri gid=82314714
+// =============================================
+var SHEET_ID  = '1poXSOO6CVYOIDmDGHiogxmsEFo_IrwYq';
+var SHEET_GID = '82314714';
+var CSV_URL   = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/export?format=csv&gid=' + SHEET_GID;
+var CACHE_KEY = 'difteri_cache_2026';
+var CACHE_TS  = 'difteri_cache_ts_2026';
+
+var DATA = [];
+var BLN  = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+document.getElementById('s-nama-bulan').textContent = BLN[new Date().getMonth()].substring(0,3);
+
+// =============================================
+// TABS
+// =============================================
+function switchTab(name, btn){
+  document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='peta') setTimeout(initPeta,200);
+  if(name==='daftar') renderDaftar();
+  if(name==='laporan') renderRekap();
+  if(name==='dashboard') renderDashboard();
+}
+
+// =============================================
+// FETCH
+// =============================================
+function fetchData(force){
+  if(!force){
+    var cached=localStorage.getItem(CACHE_KEY);
+    if(cached){try{DATA=JSON.parse(cached);afterLoad(false);return;}catch(e){}}
+  }
+  setLoading(true,'Memuat data dari Google Sheets Difteri...');
+  setSyncStatus('loading');
+  fetch(CSV_URL)
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.text();})
+    .then(function(csv){
+      // Sheet Difteri: baris 1=Tahun2026, 2=grup header, 3=sub-header, 4=sub-sub-header, 5=kolom detail, data mulai baris 6
+      var rows=parseCSV(csv);
+      // Cari baris data: baris yang kol A tidak kosong dan kol B (No.Epid) atau kol C (Nama) ada isi
+      var dataRows=rows.slice(5).filter(function(r){
+        return r[0]&&r[0].toString().trim()!==''&&(r[2]||r[9]||'').toString().trim()!=='';
+      });
+      DATA=dataRows.map(function(r){return buatKasus(r);});
+      localStorage.setItem(CACHE_KEY,JSON.stringify(DATA));
+      localStorage.setItem(CACHE_TS,new Date().toISOString());
+      afterLoad(true);
+    })
+    .catch(function(err){
+      setLoading(false);setSyncStatus('error');
+      showAlert('danger','❌ Gagal memuat data: '+err.message+'. Pastikan sheet berstatus "Anyone with link can view".');
+    });
+}
+
+// MAPPING KOLOM SHEET DIFTERI
+// A=0:No, B=1:Puskesmas, C=2:NoEpid
+// D=3:NamaPelapor, E=4:KantorJabatan, F=5:Kab, G=6:Provinsi
+// H=7:TglTerima, I=8:TglPelacakan
+// J=9:NamaPenderita, K=10:NamaOrtu, L=11:JK, M=12:TglLahir, N=13:Umur, O=14:BB, P=15:TB
+// Q=16:Alamat, R=17:Desa, S=18:Kecamatan, T=19:Kab2, U=20:Prov2, V=21:Telp, W=22:Pekerjaan, X=23:AlamatKerja
+// Y=24:KontakDarurat, Z=25:TelpKontak
+// AA=26:TglMulaiSakit, AB=27:KeluhanUtama
+// AC=28:Demam(tgl), AD=29:SakitTenggorokan(tgl), AE=30:LeherBengkak(tgl), AF=31:SesakNafas(tgl), AG=32:Pseudomembran(tgl), AH=33:GejalaLain
+// AI=34:ImunBelum, AJ=35:ImunPernah, AK=36:ImunTidakTahu
+// AL=37:DPT1, AM=38:DPT2, AN=39:DPT3, AO=40:DT1, AP=41:TD2, AQ=42:TD5
+// AR=43:SumberKMS, AS=44:SumberBKIA, AT=45:SumberIngatan, AU=46:SumberLain
+// AV=47:StatusGiziBuruk, AW=48:StatusGiziKurang, AX=49:StatusGiziBaik
+// AY=50:SpesimenTenggorokan, AZ=51:SpesimenHidung
+// BA=52:TglAmbilSpesimen, BB=53:TglKirimSpesimen, BC=54:KodeSpesimen
+// BD=55:DiagnosisSuspek, BE=56:DiagnosisSuspekTgl
+// BF=57:PemberianAntibiotik, BG=58:JenisAntibiotik
+// BH=59:PemberianADS_Ya, BI=60:ADS_Dosis, BJ=61:ADS_Tgl, BK=62:ADS_Tidak_Alasan
+// BL=63:ObatLain
+// BM=64:KondisiMasihSakit, BN=65:KondisiSembuh, BO=66:KondisiMeninggal
+// BP=67:BepergianPernah, BQ=68:BepergianTidak, BR=69:BepergianTidakJelas, BS=70:BepergianDaerah
+// BT=71:KunjunganPernah, BU=72:KunjunganTidak, BV=73:KunjunganTidakJelas, BW=74:KunjunganDetail
+// BX=75:KontakNama, BY=76:KontakUmur, BZ=77:KontakAlamat, CA=78:KontakHub, CB=79:KontakImunisasi
+
+function buatKasus(r){
+  var pseudomembran  = (r[32]||'').toString().trim();
+  var leherBengkak   = (r[30]||'').toString().trim();
+  var sesakNafas     = (r[31]||'').toString().trim();
+  var sakitTenggorok = (r[29]||'').toString().trim();
+  var demam          = (r[28]||'').toString().trim();
+  var tglSakit       = (r[26]||'').toString().trim();
+  var spesименTenggorokan = (r[50]||'').toString().toLowerCase();
+  var spesimenHidung = (r[51]||'').toString().toLowerCase();
+  var adaSpesimen    = spesименTenggorokan!==''||spesиmenHidung!=='';
+  var kondisiMeninggal = (r[66]||'').toString().trim();
+
+  var klas = klasifikasiOtomatis(pseudomembran,leherBengkak,sesakNafas,sakitTenggorok,tglSakit,adaSpesimen,kondisiMeninggal);
+
+  // Imunisasi: cek apakah pernah (kol AJ=35) atau belum (AI=34)
+  var imunPernah = (r[35]||'').toString().trim();
+  var imunBelum  = (r[34]||'').toString().trim();
+  var imunTidak  = (r[36]||'').toString().trim();
+  var dpt1=(r[37]||'').toString().trim(), dpt2=(r[38]||'').toString().trim(), dpt3=(r[39]||'').toString().trim();
+
+  // Outcome
+  var outcome = kondisiMeninggal!==''&&kondisiMeninggal!=='-'?'Meninggal'
+    : (r[65]||'').toString().trim()!==''&&(r[65]||'').toString().trim()!=='-'?'Sembuh'
+    : (r[64]||'').toString().trim()!==''?'Masih Sakit':'—';
+
+  return {
+    no              : r[0]||'',
+    puskesmas       : r[1]||'',
+    noEpid          : r[2]||'',
+    namaPelapor     : r[3]||'',
+    tglTerima       : parseGDate(r[7]||''),
+    tglPelacakan    : parseGDate(r[8]||''),
+    nama            : r[9]||'',
+    namaOrtu        : r[10]||'',
+    jk              : r[11]||'',
+    tglLahir        : r[12]||'',
+    umur            : r[13]||'',
+    bb              : r[14]||'',
+    tb              : r[15]||'',
+    alamat          : r[16]||'',
+    desa            : r[17]||'',
+    kecamatan       : r[18]||'',
+    telp            : r[21]||'',
+    pekerjaan       : r[22]||'',
+    tglSakit        : parseGDate(tglSakit),
+    keluhanUtama    : r[27]||'',
+    demam           : demam,
+    sakitTenggorok  : sakitTenggorok,
+    leherBengkak    : leherBengkak,
+    sesakNafas      : sesakNafas,
+    pseudomembran   : pseudomembran,
+    gejalaLain      : r[33]||'',
+    imunBelum       : imunBelum,
+    imunPernah      : imunPernah,
+    imunTidak       : imunTidak,
+    dpt1:dpt1, dpt2:dpt2, dpt3:dpt3,
+    dt1             : r[40]||'', td2:r[41]||'', td5:r[42]||'',
+    statusGizi      : (r[49]||'').toString().trim()!==''?'Baik':(r[48]||'').toString().trim()!==''?'Kurang':(r[47]||'').toString().trim()!==''?'Buruk':'—',
+    spesimenTenggorokan: r[50]||'',
+    spesimenHidung  : r[51]||'',
+    tglAmbilSpesimen: parseGDate(r[52]||''),
+    tglKirimSpesimen: parseGDate(r[53]||''),
+    kodeSpesimen    : r[54]||'',
+    antibiotik      : r[57]||'',
+    jenisAntibiotik : r[58]||'',
+    ads             : r[59]||'',
+    adsDosis        : r[60]||'',
+    adsTgl          : r[61]||'',
+    outcome         : outcome,
+    tglSembuh       : parseGDate(r[65]||''),
+    tglMeninggal    : parseGDate(r[66]||''),
+    bepergian       : (r[67]||'').toString().trim()!==''?'Ya':(r[68]||'').toString().trim()!==''?'Tidak':'—',
+    daerahBepergian : r[70]||'',
+    kunjungan       : (r[71]||'').toString().trim()!==''?'Ya':(r[72]||'').toString().trim()!==''?'Tidak':'—',
+    kontakNama      : r[75]||'',
+    kontakUmur      : r[76]||'',
+    kontakHub       : r[78]||'',
+    klasifikasi     : klas
+  };
+}
+
+function klasifikasiOtomatis(pseudomembran,leherBengkak,sesakNafas,sakitTenggorok,tglSakit,adaSpesimen,kondisiMeninggal){
+  var adaPseudo   = pseudomembran!==''&&pseudomembran!=='-'&&pseudomembran.toLowerCase()!=='tidak';
+  var adaLeher    = leherBengkak!==''&&leherBengkak!=='-';
+  var adaSesak    = sesakNafas!==''&&sesakNafas!=='-';
+  var adaTenggorok= sakitTenggorok!==''&&sakitTenggorok!=='-';
+
+  // Konfirmasi: spesimen diambil + pseudomembran (indikasi lab positif jika spesimen terisi)
+  if(adaSpesimen&&adaPseudo) return 'Konfirmasi';
+  // Probable: pseudomembran + leher bengkak/sesak, atau meninggal dengan gejala klinis
+  if(adaPseudo&&(adaLeher||adaSesak)) return 'Probable';
+  if(kondisiMeninggal!==''&&kondisiMeninggal!=='-'&&adaPseudo) return 'Probable';
+  // Suspek: ada tanggal sakit + sakit tenggorokan
+  if(tglSakit!==''&&tglSakit!=='-'&&adaTenggorok) return 'Suspek';
+  if(tglSakit!==''&&tglSakit!=='-') return 'Suspek';
+  return 'Suspek';
+}
+
+function afterLoad(fromServer){
+  setLoading(false); setSyncStatus('ok');
+  updateBadge(); renderDashboard(); renderDaftar(); renderRekap(); populatePkmFilter();
+  if(window._petaInit) updatePetaMarkers();
+  var ts=localStorage.getItem(CACHE_TS);
+  var tsFmt=ts?formatTgl(ts.substring(0,10))+', '+ts.substring(11,16):'';
+  document.getElementById('last-sync-info').innerHTML='<i class="ti ti-database" style="font-size:12px;"></i> '+DATA.length+' kasus'+(tsFmt?' · '+tsFmt:'');
+  if(fromServer) showAlert('success','✅ Berhasil memuat '+DATA.length+' kasus dari Google Sheets Difteri.');
+}
+
+function parseGDate(s){
+  if(!s||s==='-'||s==='x') return s;
+  var m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  return s;
+}
+
+function parseCSV(text){
+  var rows=[],row=[],cur='',inQ=false;
+  for(var i=0;i<text.length;i++){
+    var c=text[i];
+    if(c==='"'){inQ=!inQ;}
+    else if(c===','&&!inQ){row.push(cur.trim());cur='';}
+    else if((c==='\n'||c==='\r')&&!inQ){if(c==='\r'&&text[i+1]==='\n')i++;row.push(cur.trim());rows.push(row);row=[];cur='';}
+    else cur+=c;
+  }
+  if(row.length||cur)rows.push(row.concat([cur.trim()]));
+  return rows;
+}
+
+// =============================================
+// UI HELPERS
+// =============================================
+function setLoading(on,msg){var el=document.getElementById('loading');el.classList.toggle('hide',!on);if(msg)document.getElementById('loading-msg').textContent=msg;}
+function setSyncStatus(state){
+  var dot=document.getElementById('sync-dot'),label=document.getElementById('sync-label');
+  if(state==='loading'){dot.style.background='#7ADFD6';label.textContent='Memuat...';}
+  else if(state==='ok'){dot.style.background='#1D9E75';dot.style.animation='none';label.textContent='Tersinkron';}
+  else{dot.style.background='#E24B4A';dot.style.animation='none';label.textContent='Gagal — coba lagi';}
+}
+function showAlert(type,msg){
+  var el=document.getElementById('alert-sync'),mel=document.getElementById('alert-sync-msg');
+  el.className='alert alert-'+type;el.style.display='flex';mel.textContent=msg;
+  setTimeout(function(){el.style.display='none';},5000);
+}
+function updateBadge(){document.getElementById('badge-total').textContent=DATA.length;}
+function formatTgl(s){if(!s||s==='-'||s==='x')return s||'-';var d=new Date(s);if(isNaN(d))return s;return d.getDate()+' '+BLN[d.getMonth()]+' '+d.getFullYear();}
+function badgeKlas(k){var map={'Suspek':'badge-suspek','Probable':'badge-probable','Konfirmasi':'badge-konfirmasi','Bukan Difteri':'badge-bukan'};return '<span class="badge '+(map[k]||'badge-suspek')+'">'+(k||'Suspek')+'</span>';}
+function adaVal(v){return v&&v!=='-'&&v!=='x'&&v.trim()!=='';}
+function populatePkmFilter(){var sel=document.getElementById('q-pkm'),ex=Array.from(sel.options).map(function(o){return o.value;});var pkms=[];DATA.forEach(function(k){if(k.puskesmas&&pkms.indexOf(k.puskesmas)===-1)pkms.push(k.puskesmas);});pkms.sort().forEach(function(p){if(ex.indexOf(p)===-1){var opt=document.createElement('option');opt.value=p;opt.textContent=p;sel.appendChild(opt);}});}
+
+// =============================================
+// DASHBOARD
+// =============================================
+var chTren,chUsia,chKlas,chImun,chGejala,chOutcome;
+
+function renderDashboard(){
+  var suspek=0,probable=0,konfirmasi=0,bukan=0,meninggal=0;
+  var bln=new Date().getMonth(),bulanIni=0;
+  DATA.forEach(function(k){
+    var kl=k.klasifikasi;
+    if(kl==='Suspek')suspek++;
+    else if(kl==='Probable')probable++;
+    else if(kl==='Konfirmasi')konfirmasi++;
+    else if(kl==='Bukan Difteri')bukan++;
+    if(k.outcome==='Meninggal')meninggal++;
+    if(k.tglSakit&&k.tglSakit!=='-'){var d=new Date(k.tglSakit);if(!isNaN(d)&&d.getMonth()===bln)bulanIni++;}
+  });
+  document.getElementById('s-total').textContent=DATA.length;
+  document.getElementById('s-suspek').textContent=suspek;
+  document.getElementById('s-probable').textContent=probable;
+  document.getElementById('s-konfirmasi').textContent=konfirmasi;
+  document.getElementById('s-bukan').textContent=bukan;
+  document.getElementById('s-bulan').textContent=bulanIni;
+  var cfr=DATA.length>0?((meninggal/DATA.length)*100).toFixed(1)+'%':'0%';
+  document.getElementById('s-meninggal').textContent=meninggal+' ('+cfr+')';
+  document.getElementById('alert-klb').style.display=konfirmasi>=1?'flex':'none';
+
+  // Recent 5
+  var recent=DATA.slice(-5).reverse();
+  var tbody=document.getElementById('tbl-recent');
+  if(!recent.length){
+    tbody.innerHTML='<tr><td colspan="9"><div class="empty-state"><i class="ti ti-cloud-download"></i><p>Klik <strong>Muat Data</strong>.</p></div></td></tr>';
+  } else {
+    tbody.innerHTML=recent.map(function(k){
+      var gejalaChips='';
+      if(adaVal(k.pseudomembran))gejalaChips+='<span class="gejala-chip">Pseudomembran</span>';
+      if(adaVal(k.leherBengkak))gejalaChips+='<span class="gejala-chip">Leher Bengkak</span>';
+      if(adaVal(k.sesakNafas))gejalaChips+='<span class="gejala-chip">Sesak Nafas</span>';
+      if(adaVal(k.demam))gejalaChips+='<span class="gejala-chip">Demam</span>';
+      return '<tr>'
+        +'<td><code style="font-size:11px;">'+k.noEpid+'</code></td>'
+        +'<td style="font-weight:500;">'+k.nama+'</td>'
+        +'<td>'+k.jk+'</td>'
+        +'<td style="font-size:12px;">'+k.umur+'</td>'
+        +'<td style="font-size:12px;">'+k.puskesmas+'</td>'
+        +'<td style="font-size:12px;">'+formatTgl(k.tglSakit)+'</td>'
+        +'<td>'+(gejalaChips||'—')+'</td>'
+        +'<td>'+badgeKlas(k.klasifikasi)+'</td>'
+        +'<td style="font-size:12px;">'+k.outcome+'</td>'
+        +'</tr>';
+    }).join('');
+  }
+  renderCharts();
+}
+
+function renderCharts(){
+  // Tren
+  var tren=Array(12).fill(0);
+  DATA.forEach(function(k){if(k.tglSakit&&k.tglSakit!=='-'){var d=new Date(k.tglSakit);if(!isNaN(d))tren[d.getMonth()]++;}});
+  var ctT=document.getElementById('chartTren');
+  if(chTren)chTren.destroy();
+  chTren=new Chart(ctT,{type:'bar',data:{labels:BLN.map(function(b){return b.substr(0,3);}),datasets:[{label:'Kasus',data:tren,backgroundColor:'rgba(26,122,110,.75)',borderColor:'#1A7A6E',borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},responsive:true}});
+
+  // Usia
+  var ug={'<5 thn':0,'5-9 thn':0,'10-14 thn':0,'15-19 thn':0,'≥20 thn':0};
+  DATA.forEach(function(k){
+    var u=parseInt(k.umur)||0;
+    if(u<5)ug['<5 thn']++;
+    else if(u<10)ug['5-9 thn']++;
+    else if(u<15)ug['10-14 thn']++;
+    else if(u<20)ug['15-19 thn']++;
+    else ug['≥20 thn']++;
+  });
+  var ctU=document.getElementById('chartUsia');
+  if(chUsia)chUsia.destroy();
+  chUsia=new Chart(ctU,{type:'doughnut',data:{labels:Object.keys(ug),datasets:[{data:Object.values(ug),backgroundColor:['#E24B4A','#F57C00','#EF9F27','#378ADD','#1A7A6E'],borderWidth:2}]},options:{plugins:{legend:{position:'right',labels:{font:{size:11}}}},responsive:true}});
+
+  // Klasifikasi
+  var kc={'Suspek':0,'Probable':0,'Konfirmasi':0,'Bukan Difteri':0};
+  DATA.forEach(function(k){var x=k.klasifikasi||'Suspek';if(kc[x]!==undefined)kc[x]++;});
+  var ctK=document.getElementById('chartKlas');
+  if(chKlas)chKlas.destroy();
+  chKlas=new Chart(ctK,{type:'doughnut',data:{labels:Object.keys(kc),datasets:[{data:Object.values(kc),backgroundColor:['#EF9F27','#F57C00','#E24B4A','#1D9E75'],borderWidth:2}]},options:{plugins:{legend:{position:'right',labels:{font:{size:11}}}},responsive:true}});
+
+  // Imunisasi
+  var ic={'Pernah Imunisasi':0,'Belum Pernah':0,'Tidak Tahu':0};
+  DATA.forEach(function(k){
+    if(adaVal(k.imunPernah))ic['Pernah Imunisasi']++;
+    else if(adaVal(k.imunBelum))ic['Belum Pernah']++;
+    else ic['Tidak Tahu']++;
+  });
+  var ctI=document.getElementById('chartImun');
+  if(chImun)chImun.destroy();
+  chImun=new Chart(ctI,{type:'bar',data:{labels:Object.keys(ic),datasets:[{label:'Kasus',data:Object.values(ic),backgroundColor:['#1D9E75','#E24B4A','#9B9B97'],borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},responsive:true,indexAxis:'y'}});
+
+  // Gejala
+  var gc={Demam:0,'Sakit Tenggorokan':0,'Pseudomembran':0,'Leher Bengkak':0,'Sesak Nafas':0};
+  DATA.forEach(function(k){
+    if(adaVal(k.demam))gc['Demam']++;
+    if(adaVal(k.sakitTenggorok))gc['Sakit Tenggorokan']++;
+    if(adaVal(k.pseudomembran))gc['Pseudomembran']++;
+    if(adaVal(k.leherBengkak))gc['Leher Bengkak']++;
+    if(adaVal(k.sesakNafas))gc['Sesak Nafas']++;
+  });
+  var ctG=document.getElementById('chartGejala');
+  if(chGejala)chGejala.destroy();
+  chGejala=new Chart(ctG,{type:'bar',data:{labels:Object.keys(gc),datasets:[{label:'Kasus',data:Object.values(gc),backgroundColor:'rgba(26,122,110,.75)',borderColor:'#1A7A6E',borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},responsive:true,indexAxis:'y'}});
+
+  // Outcome
+  var oc={'Masih Sakit':0,'Sembuh':0,'Meninggal':0,'—':0};
+  DATA.forEach(function(k){if(oc[k.outcome]!==undefined)oc[k.outcome]++;else oc['—']++;});
+  var ctO=document.getElementById('chartOutcome');
+  if(chOutcome)chOutcome.destroy();
+  chOutcome=new Chart(ctO,{type:'doughnut',data:{labels:Object.keys(oc),datasets:[{data:Object.values(oc),backgroundColor:['#EF9F27','#1D9E75','#E24B4A','#C0C0C0'],borderWidth:2}]},options:{plugins:{legend:{position:'right',labels:{font:{size:11}}}},responsive:true}});
+}
+
+// =============================================
+// DAFTAR
+// =============================================
+function renderDaftar(){
+  var q=(document.getElementById('q-cari').value||'').toLowerCase();
+  var fk=document.getElementById('q-klas').value;
+  var fp=document.getElementById('q-pkm').value;
+  var filtered=DATA.filter(function(k){
+    var mq=!q||k.nama.toLowerCase().includes(q)||k.noEpid.toLowerCase().includes(q)||(k.puskesmas||'').toLowerCase().includes(q);
+    var mk=!fk||k.klasifikasi===fk;
+    var mp=!fp||k.puskesmas===fp;
+    return mq&&mk&&mp;
+  });
+  var tbody=document.getElementById('tbl-daftar');
+  if(!filtered.length){tbody.innerHTML='<tr><td colspan="18"><div class="empty-state"><i class="ti ti-search-off"></i><p>Tidak ada data cocok.</p></div></td></tr>';window._fd=filtered;return;}
+  tbody.innerHTML=filtered.map(function(k,i){
+    var pseudo=adaVal(k.pseudomembran)?'<span style="color:var(--red-d);font-weight:600;">Ya</span>':'–';
+    var leher=adaVal(k.leherBengkak)?'<span style="color:var(--orange);font-weight:600;">Ya</span>':'–';
+    var sesak=adaVal(k.sesakNafas)?'<span style="color:var(--orange);font-weight:600;">Ya</span>':'–';
+    var demam=adaVal(k.demam)?'<span style="color:var(--amber-d);">Ya</span>':'–';
+    var imunStr=adaVal(k.imunPernah)?'Pernah':adaVal(k.imunBelum)?'Belum':'Tdk Tahu';
+    var spesimen=(adaVal(k.spesimenTenggorokan)||adaVal(k.spesimenHidung))?'<span style="color:var(--teal);font-weight:600;">Ada</span>':'–';
+    return '<tr>'
+      +'<td style="color:var(--text3);font-size:11px;">'+(i+1)+'</td>'
+      +'<td><code style="font-size:11px;">'+k.noEpid+'</code></td>'
+      +'<td style="font-weight:500;">'+k.nama+'</td>'
+      +'<td>'+k.jk+'</td>'
+      +'<td style="font-size:12px;">'+k.umur+'</td>'
+      +'<td style="font-size:11px;">'+(k.desa?k.desa+'<br>':'')+'<span style="color:var(--text3);">'+k.kecamatan+'</span></td>'
+      +'<td style="font-size:11px;">'+k.puskesmas+'</td>'
+      +'<td style="font-size:11px;">'+formatTgl(k.tglTerima)+'</td>'
+      +'<td style="font-size:11px;">'+formatTgl(k.tglSakit)+'</td>'
+      +'<td style="font-size:11px;">'+demam+'</td>'
+      +'<td style="font-size:11px;">'+pseudo+'</td>'
+      +'<td style="font-size:11px;">'+leher+'</td>'
+      +'<td style="font-size:11px;">'+sesak+'</td>'
+      +'<td style="font-size:11px;">'+imunStr+'</td>'
+      +'<td style="font-size:11px;">'+spesimen+'</td>'
+      +'<td style="font-size:11px;">'+k.outcome+'</td>'
+      +'<td>'+badgeKlas(k.klasifikasi)+'</td>'
+      +'<td><button class="btn btn-outline btn-sm" onclick="lihatDetail('+i+')"><i class="ti ti-eye"></i></button></td>'
+      +'</tr>';
+  }).join('');
+  window._fd=filtered;
+}
+
+// =============================================
+// MODAL
+// =============================================
+function lihatDetail(idx){
+  var k=window._fd?window._fd[idx]:DATA[idx];
+  if(!k)return;
+  var imunList=[];
+  if(adaVal(k.dpt1))imunList.push('DPT-HB-HiB 1');
+  if(adaVal(k.dpt2))imunList.push('DPT-HB-HiB 2');
+  if(adaVal(k.dpt3))imunList.push('DPT-HB-HiB 3');
+  if(adaVal(k.dt1))imunList.push('DT Kelas 1');
+  if(adaVal(k.td2))imunList.push('TD Kelas 2');
+  if(adaVal(k.td5))imunList.push('TD Kelas 5');
+
+  var gejalaList=[];
+  if(adaVal(k.demam))gejalaList.push('Demam ('+formatTgl(k.demam)+')');
+  if(adaVal(k.sakitTenggorok))gejalaList.push('Sakit Tenggorokan ('+formatTgl(k.sakitTenggorok)+')');
+  if(adaVal(k.pseudomembran))gejalaList.push('Pseudomembran ('+formatTgl(k.pseudomembran)+')');
+  if(adaVal(k.leherBengkak))gejalaList.push('Leher Bengkak / Bull Neck ('+formatTgl(k.leherBengkak)+')');
+  if(adaVal(k.sesakNafas))gejalaList.push('Sesak Nafas ('+formatTgl(k.sesakNafas)+')');
+  if(k.gejalaLain)gejalaList.push('Lain: '+k.gejalaLain);
+
+  var html='<div style="padding:.75rem;background:var(--teal-l);border-radius:10px;margin-bottom:1rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
+    +badgeKlas(k.klasifikasi)+'<strong style="font-size:13px;">'+k.noEpid+'</strong>'
+    +'<span style="font-size:12px;color:var(--text3);">'+k.puskesmas+'</span></div>'
+    +'<table class="dtbl">'
+    +dr('Nama Penderita',k.nama)+dr('Jenis Kelamin',k.jk)+dr('Umur',k.umur+' tahun')
+    +dr('Nama Orang Tua',k.namaOrtu||'—')+dr('Pekerjaan',k.pekerjaan||'—')
+    +dr('Alamat',[k.alamat,k.desa,'Kec. '+k.kecamatan].filter(Boolean).join(', '))
+    +dr('No. Telp',k.telp||'—')
+    +dr('Tgl Terima Laporan',formatTgl(k.tglTerima))+dr('Tgl Pelacakan',formatTgl(k.tglPelacakan))
+    +dr('Tgl Mulai Sakit',formatTgl(k.tglSakit))+dr('Keluhan Utama',k.keluhanUtama||'—')
+    +dr('Gejala & Tanda',gejalaList.join('<br>')||'—')
+    +dr('Status Imunisasi',adaVal(k.imunPernah)?'Pernah — '+imunList.join(', '):adaVal(k.imunBelum)?'Belum Pernah':'Tidak Tahu')
+    +dr('Status Gizi',k.statusGizi)
+    +dr('Spesimen',[(adaVal(k.spesimenTenggorokan)?'Tenggorokan':''), (adaVal(k.spesimenHidung)?'Hidung':'')].filter(Boolean).join(', ')||'—')
+    +dr('Tgl Ambil / Kirim Spesimen',formatTgl(k.tglAmbilSpesimen)+' / '+formatTgl(k.tglKirimSpesimen))
+    +dr('Kode Spesimen',k.kodeSpesimen||'—')
+    +dr('Pemberian Antibiotik',adaVal(k.antibiotik)?'Ya — '+k.jenisAntibiotik:'—')
+    +dr('Pemberian ADS',adaVal(k.ads)?'Ya ('+k.adsDosis+' UI, '+formatTgl(k.adsTgl)+')':'—')
+    +dr('Outcome',k.outcome)
+    +dr('Riwayat Bepergian',k.bepergian+(adaVal(k.daerahBepergian)?' — '+k.daerahBepergian:''))
+    +dr('Kontak Erat',adaVal(k.kontakNama)?k.kontakNama+' ('+k.kontakHub+')':'—')
+    +'</table>';
+  document.getElementById('modal-body').innerHTML=html;
+  document.getElementById('modal').classList.add('open');
+}
+function dr(l,v){return '<tr><td>'+l+'</td><td>'+(v||'—')+'</td></tr>';}
+
+// =============================================
+// PETA
+// =============================================
+var petaMap; window._petaInit=false;
+var PKM_COORDS={
+  'Puskesmas Selat':{lat:-3.0217474,lng:114.3894490},'Puskesmas Melati':{lat:-3.0162626,lng:114.3877452},
+  'Puskesmas Pulau Telo':{lat:-3.0006893,lng:114.3732229},'Puskesmas Panamas':{lat:-3.0289399,lng:114.3428261},
+  'Puskesmas Barimba':{lat:-3.0090017,lng:114.4091764},'Puskesmas Pulau Kupang':{lat:-3.0691117,lng:114.3671444},
+  'Puskesmas Terusan Tengah':{lat:-3.2332199,lng:114.2431812},'Puskesmas Anjir Serapat':{lat:-3.0822648,lng:114.4439133},
+  'Puskesmas Tamban Catur':{lat:-3.1849042,lng:114.3730141},'Puskesmas Tamban Baru':{lat:-3.2352055,lng:114.3931809},
+  'Puskesmas Lupak':{lat:-3.2829074,lng:114.3106132},'Puskesmas Basarang':{lat:-2.9517051,lng:114.3051465},
+  'Puskesmas Mandomai':{lat:-2.8202330,lng:114.3533852},'Puskesmas Sei Tatas':{lat:-2.9050128,lng:114.4892637},
+  'Puskesmas Palingkau':{lat:-2.8443945,lng:114.5190171},'Puskesmas Dadahup':{lat:-2.6575579,lng:114.6007943},
+  'Puskesmas Talekung Punei':{lat:-2.6952080,lng:114.6222060},'Puskesmas Palangkau':{lat:-2.6818837,lng:114.6863631},
+  'Puskesmas Lamunti':{lat:-2.5933591,lng:114.4343763},'Puskesmas Danau Rawah':{lat:-1.7551156,lng:114.3414777},
+  'Puskesmas Mantangai':{lat:-2.5120165,lng:114.4937203},'Puskesmas Timpah':{lat:-1.7203324,lng:114.4794052},
+  'Puskesmas Pujon':{lat:-1.3487854,lng:114.3672342},'Puskesmas Jangkang':{lat:-1.1585436,lng:114.1983547},
+  'Puskesmas Sei Hanyo':{lat:-0.9316172,lng:114.0227836},'Puskesmas Sei Pinang':{lat:-0.7804785,lng:114.0514266},
+  'RSUD dr. H. Soemarno Sosroatmodjo':{lat:-3.0093504,lng:114.3895964},'RS Pratama Pujon':{lat:-1.3602657,lng:114.3451102}
+};
+var KEC_COORDS={
+  'Selat':{lat:-3.0180,lng:114.3860},'Kapuas Hilir':{lat:-3.009,lng:114.409},'Bataguh':{lat:-3.069,lng:114.367},
+  'Kapuas Timur':{lat:-3.082,lng:114.444},'Tamban Catur':{lat:-3.185,lng:114.373},'Kapuas Kuala':{lat:-3.283,lng:114.311},
+  'Basarang':{lat:-2.952,lng:114.305},'Kapuas Barat':{lat:-2.820,lng:114.353},'Pulau Petak':{lat:-2.905,lng:114.489},
+  'Kapuas Murung':{lat:-2.844,lng:114.519},'Dadahup':{lat:-2.657,lng:114.601},'Mantangai':{lat:-2.512,lng:114.494},
+  'Timpah':{lat:-1.720,lng:114.479},'Kapuas Tengah':{lat:-1.349,lng:114.367},'Pasak Talawang':{lat:-1.158,lng:114.198},
+  'Kapuas Hulu':{lat:-0.932,lng:114.023},'Mandau Talawang':{lat:-0.780,lng:114.051}
+};
+
+function initPeta(){
+  if(window._petaInit){updatePetaMarkers();return;}
+  petaMap=L.map('difteri-map').setView([-2.0,114.4],8);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap',maxZoom:18}).addTo(petaMap);
+  window._petaInit=true; updatePetaMarkers();
+}
+function updatePetaMarkers(){
+  if(!petaMap)return;
+  if(window._petaLayers)window._petaLayers.forEach(function(l){petaMap.removeLayer(l);});
+  window._petaLayers=[];
+  var cmap={'Konfirmasi':'#E24B4A','Probable':'#F57C00','Suspek':'#EF9F27','Bukan Difteri':'#1D9E75'};
+  DATA.forEach(function(k){
+    var c=PKM_COORDS[k.puskesmas]||KEC_COORDS[k.kecamatan];
+    if(!c)return;
+    var color=cmap[k.klasifikasi]||'#EF9F27';
+    var icon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;background:'+color+';border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);cursor:pointer;"></div>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-13]});
+    var gejalaStr=[];
+    if(adaVal(k.pseudomembran))gejalaStr.push('Pseudomembran');
+    if(adaVal(k.leherBengkak))gejalaStr.push('Leher Bengkak');
+    if(adaVal(k.sesakNafas))gejalaStr.push('Sesak Nafas');
+    var popup='<div style="font-size:12px;min-width:180px;"><strong style="font-size:13px;">'+k.nama+'</strong><br>'+badgeKlas(k.klasifikasi)+'<br><span style="color:#666;font-size:11px;">'+k.puskesmas+'</span><br><span style="color:#666;font-size:11px;">Tgl Sakit: '+formatTgl(k.tglSakit)+'</span><br><span style="color:#666;font-size:11px;">Gejala: '+(gejalaStr.join(', ')||'—')+'</span><br><span style="color:#666;font-size:11px;">Outcome: '+k.outcome+'</span></div>';
+    var m=L.marker([c.lat,c.lng],{icon:icon}).addTo(petaMap).bindPopup(popup);
+    window._petaLayers.push(m);
+  });
+}
+
+// =============================================
+// REKAP
+// =============================================
+function renderRekap(){
+  renderRekapGroup('tbl-rekap-pkm','puskesmas',true);
+  renderRekapGroup('tbl-rekap-kec','kecamatan',false);
+}
+function renderRekapGroup(tbodyId,field,showMeninggal){
+  var grp={};
+  DATA.forEach(function(k){
+    var key=k[field]||'Tidak diketahui';
+    if(!grp[key])grp[key]={s:0,p:0,k:0,b:0,m:0};
+    var kl=k.klasifikasi;
+    if(kl==='Suspek')grp[key].s++;
+    else if(kl==='Probable')grp[key].p++;
+    else if(kl==='Konfirmasi')grp[key].k++;
+    else if(kl==='Bukan Difteri')grp[key].b++;
+    if(k.outcome==='Meninggal')grp[key].m++;
+  });
+  var keys=Object.keys(grp).sort();
+  var tbody=document.getElementById(tbodyId);
+  var cols=showMeninggal?7:6;
+  if(!keys.length){tbody.innerHTML='<tr><td colspan="'+cols+'"><div class="empty-state" style="padding:1.5rem;"><p>Belum ada data.</p></div></td></tr>';return;}
+  tbody.innerHTML=keys.map(function(key){
+    var r=grp[key],total=r.s+r.p+r.k+r.b;
+    return '<tr><td style="font-weight:500;">'+key+'</td>'
+      +'<td>'+(r.s?'<span class="badge badge-suspek">'+r.s+'</span>':'–')+'</td>'
+      +'<td>'+(r.p?'<span class="badge badge-probable">'+r.p+'</span>':'–')+'</td>'
+      +'<td>'+(r.k?'<span class="badge badge-konfirmasi">'+r.k+'</span>':'–')+'</td>'
+      +'<td>'+(r.b?'<span class="badge badge-bukan">'+r.b+'</span>':'–')+'</td>'
+      +(showMeninggal?'<td>'+(r.m?'<span style="color:var(--red-d);font-weight:600;">'+r.m+'</span>':'–')+'</td>':'')
+      +'<td style="font-weight:700;">'+total+'</td></tr>';
+  }).join('');
+}
+
+// =============================================
+// EKSPOR CSV
+// =============================================
+function exportCSV(){
+  if(!DATA.length){alert('Belum ada data.');return;}
+  var h=['No','Puskesmas','Nomor Epid','Tgl Terima','Tgl Pelacakan','Nama Penderita','JK','Umur','BB','TB','Alamat','Desa','Kecamatan','Tgl Mulai Sakit','Demam','Sakit Tenggorokan','Leher Bengkak','Sesak Nafas','Pseudomembran','Gejala Lain','Status Imunisasi','DPT1','DPT2','DPT3','DT1','TD2','TD5','Status Gizi','Spesimen Tenggorokan','Spesimen Hidung','Tgl Ambil Spesimen','Tgl Kirim Spesimen','Kode Spesimen','Antibiotik','Jenis Antibiotik','ADS','ADS Dosis','ADS Tgl','Outcome','Tgl Sembuh','Tgl Meninggal','Bepergian','Daerah Bepergian','Klasifikasi'];
+  var rows=DATA.map(function(k,i){
+    var imun=adaVal(k.imunPernah)?'Pernah':adaVal(k.imunBelum)?'Belum Pernah':'Tidak Tahu';
+    return [i+1,k.puskesmas,k.noEpid,k.tglTerima,k.tglPelacakan,k.nama,k.jk,k.umur,k.bb,k.tb,
+      '"'+(k.alamat||'').replace(/"/g,'""')+'"',k.desa,k.kecamatan,k.tglSakit,
+      k.demam,k.sakitTenggorok,k.leherBengkak,k.sesakNafas,k.pseudomembran,
+      '"'+(k.gejalaLain||'').replace(/"/g,'""')+'"',imun,k.dpt1,k.dpt2,k.dpt3,k.dt1,k.td2,k.td5,
+      k.statusGizi,k.spesimenTenggorokan,k.spesimenHidung,k.tglAmbilSpesimen,k.tglKirimSpesimen,k.kodeSpesimen,
+      k.antibiotik,k.jenisAntibiotik,k.ads,k.adsDosis,k.adsTgl,k.outcome,k.tglSembuh,k.tglMeninggal,
+      k.bepergian,k.daerahBepergian,k.klasifikasi].join(',');
+  });
+  var blob=new Blob(['\uFEFF'+[h.join(','),...rows].join('\n')],{type:'text/csv;charset=utf-8;'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='difteri-kapuas-2026.csv';a.click();
+}
+
+// =============================================
+// INIT
+// =============================================
+(function init(){
+  var cached=localStorage.getItem(CACHE_KEY);
+  if(cached){try{DATA=JSON.parse(cached);afterLoad(false);}catch(e){fetchData(true);}}
+  else{fetchData(true);}
+})();
+</script>
+</body>
+</html>
