@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Surveilans Pertusis — Kabupaten Kapuas 2026</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --pink:#993556;--pink-d:#6B2239;--pink-l:#FBEAF0;
+  --green:#0F6E56;--green-d:#085041;--green-l:#E1F5EE;--green-m:#1D9E75;
+  --amber:#EF9F27;--amber-l:#FAEEDA;--amber-d:#854F0B;
+  --blue:#378ADD;--blue-l:#E6F1FB;--blue-d:#185FA5;
+  --red:#E24B4A;--red-l:#FCEBEB;--red-d:#A32D2D;
+  --orange:#F57C00;
+  --bg:#F7F2F4;--card:#fff;--border:#E8E0E4;
+  --text:#1A1418;--text2:#5A5057;--text3:#9B979A;
+  --r:14px;
+}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* HEADER */
+.hdr{background:linear-gradient(135deg,#4A1228 0%,#6B2239 40%,#993556 100%);color:#fff;padding:0 2rem;display:flex;align-items:center;gap:16px;height:68px;position:sticky;top:0;z-index:200;box-shadow:0 2px 16px rgba(0,0,0,.22);}
+.hdr-logo{width:42px;height:42px;background:rgba(255,255,255,.15);border-radius:12px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.25);flex-shrink:0;}
+.hdr-logo i{font-size:22px;color:#F4AABF;}
+.hdr-text h1{font-size:16px;font-weight:700;line-height:1.25;}
+.hdr-text p{font-size:11px;opacity:.72;margin-top:1px;}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.hdr-pill{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px;cursor:pointer;transition:background .15s;text-decoration:none;color:#fff;}
+.hdr-pill:hover{background:rgba(255,255,255,.22);}
+.dot-live{width:7px;height:7px;border-radius:50%;background:#F4AABF;animation:pulse .9s infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* TABS */
+.tab-bar{background:#fff;border-bottom:2px solid var(--border);display:flex;overflow-x:auto;padding:0 2rem;position:sticky;top:68px;z-index:190;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.tab-btn{display:flex;align-items:center;gap:7px;padding:15px 20px;font-size:13px;font-weight:600;color:var(--text3);border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;background:none;border-top:none;border-left:none;border-right:none;}
+.tab-btn:hover{color:var(--pink);}
+.tab-btn.active{color:var(--pink);border-bottom-color:var(--pink);}
+.tab-btn i{font-size:16px;}
+.tab-badge{background:var(--pink-l);color:var(--pink-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;}
+
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+.main{max-width:1020px;margin:0 auto;padding:2rem 1.5rem 4rem;}
+
+.section-lbl{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--pink);text-transform:uppercase;margin-bottom:1rem;display:flex;align-items:center;gap:8px;}
+.section-lbl::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* STAT CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:2rem;}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.25rem 1.25rem 1rem;}
+.stat-card .val{font-size:30px;font-weight:800;line-height:1;margin-bottom:.3rem;}
+.stat-card .lbl{font-size:12px;color:var(--text3);font-weight:500;}
+.stat-card.pink .val{color:var(--pink);}
+.stat-card.amber .val{color:var(--amber-d);}
+.stat-card.orange .val{color:var(--orange);}
+.stat-card.red .val{color:var(--red-d);}
+.stat-card.green .val{color:var(--green);}
+.stat-card.blue .val{color:var(--blue-d);}
+
+/* ALERT */
+.alert{border-radius:var(--r);padding:1rem 1.25rem;display:flex;gap:10px;align-items:flex-start;margin-bottom:1.25rem;}
+.alert i{font-size:18px;flex-shrink:0;margin-top:1px;}
+.alert p{font-size:13px;line-height:1.7;}
+.alert-info{background:var(--blue-l);border:1px solid #B5D4F4;}
+.alert-info i,.alert-info p{color:var(--blue-d);}
+.alert-warn{background:var(--amber-l);border:1px solid #F5CCA0;}
+.alert-warn i,.alert-warn p{color:var(--amber-d);}
+.alert-danger{background:var(--red-l);border:1px solid #F5AAAA;}
+.alert-danger i,.alert-danger p{color:var(--red-d);}
+.alert-success{background:var(--green-l);border:1px solid #A8DBC7;}
+.alert-success i,.alert-success p{color:var(--green-d);}
+
+/* CHART */
+.chart-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:1.5rem;}
+.chart-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;gap:8px;}
+.chart-head h3{font-size:14px;font-weight:700;}
+.chart-head p{font-size:11px;color:var(--text3);}
+canvas{max-width:100%;}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+table thead th{padding:9px 12px;background:#FAFAFA;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);text-align:left;white-space:nowrap;}
+table tbody td{padding:10px 12px;border-bottom:.5px solid var(--border);vertical-align:middle;}
+table tbody tr:last-child td{border-bottom:none;}
+table tbody tr:hover{background:#FDFAFB;}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+.badge-suspek{background:#FAEEDA;color:#854F0B;}
+.badge-probable{background:#FFE0B2;color:#E65100;}
+.badge-konfirmasi{background:var(--red-l);color:var(--red-d);}
+.badge-bukan{background:var(--green-l);color:var(--green-d);}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:'Plus Jakarta Sans',sans-serif;}
+.btn-pink{background:var(--pink);color:#fff;}
+.btn-pink:hover{background:var(--pink-d);}
+.btn-outline{background:#fff;border:1.5px solid var(--border);color:var(--text2);}
+.btn-outline:hover{border-color:var(--pink);color:var(--pink);}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:hover{background:var(--green-d);}
+.btn-blue{background:var(--blue);color:#fff;}
+.btn-sm{padding:7px 13px;font-size:12px;}
+
+/* LOADING */
+.loading-overlay{position:fixed;inset:0;background:rgba(247,242,244,.88);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+.loading-overlay.hide{display:none;}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--pink);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay p{font-size:14px;font-weight:600;color:var(--pink);}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--text3);}
+.empty-state i{font-size:40px;margin-bottom:1rem;display:block;}
+.empty-state p{font-size:13px;}
+
+/* MAP */
+#pertusis-map{width:100%;height:420px;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:center;justify-content:center;padding:1rem;}
+.modal-overlay.open{display:flex;}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.modal-head{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-head h3{font-size:15px;font-weight:700;}
+.modal-close{width:30px;height:30px;border-radius:7px;background:#FAFAFA;border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text3);}
+.modal-close:hover{background:var(--red-l);color:var(--red);}
+.modal-body{padding:1.5rem;}
+
+/* KRITERIA */
+.kriteria-box{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:1.25rem;}
+.kriteria-box h4{font-size:14px;font-weight:700;margin-bottom:.75rem;display:flex;align-items:center;gap:8px;}
+.kriteria-list{display:flex;flex-direction:column;gap:.45rem;}
+.kriteria-item{display:flex;gap:10px;font-size:13px;line-height:1.6;}
+.k-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+
+@media(max-width:640px){
+  .hdr{padding:0 1rem;}
+  .hdr-right .hdr-pill:not(:first-child){display:none;}
+  .main{padding:1rem 1rem 3rem;}
+  .stat-grid{grid-template-columns:repeat(2,1fr);}
+  .tab-bar{padding:0 .75rem;}
+  .tab-btn{padding:12px 12px;font-size:12px;}
+}
+@media print{
+  .hdr,.tab-bar,.no-print{display:none!important;}
+  .tab-content{display:block!important;}
+  body{background:#fff;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay hide" id="loading">
+  <div class="spinner"></div>
+  <p id="loading-msg">Memuat data dari Google Sheets...</p>
+</div>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-logo"><i class="ti ti-stethoscope"></i></div>
+  <div class="hdr-text">
+    <h1>Surveilans Pertusis</h1>
+    <p>Dinas Kesehatan Kabupaten Kapuas — 2026</p>
+  </div>
+  <div class="hdr-right">
+    <div class="hdr-pill" id="sync-btn" onclick="fetchData(true)">
+      <span class="dot-live" id="sync-dot" style="background:#F4AABF;"></span>
+      <span id="sync-label">Muat Data</span>
+    </div>
+    <a href="index.html" class="hdr-pill no-print">
+      <i class="ti ti-arrow-left" style="font-size:13px;"></i> Portal PD3I
+    </a>
+  </div>
+</header>
+
+<!-- TABS -->
+<nav class="tab-bar no-print">
+  <button class="tab-btn active" onclick="switchTab('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
+  <button class="tab-btn" onclick="switchTab('daftar',this)"><i class="ti ti-list"></i> Daftar Kasus <span class="tab-badge" id="badge-total">0</span></button>
+  <button class="tab-btn" onclick="switchTab('peta',this)"><i class="ti ti-map"></i> Peta Sebaran</button>
+  <button class="tab-btn" onclick="switchTab('laporan',this)"><i class="ti ti-file-report"></i> Laporan</button>
+  <button class="tab-btn" onclick="switchTab('panduan',this)"><i class="ti ti-book"></i> Panduan Klasifikasi</button>
+</nav>
+
+<!-- ===== DASHBOARD ===== -->
+<div id="tab-dashboard" class="tab-content active">
+<div class="main">
+
+  <div id="alert-klb" class="alert alert-danger" style="display:none;">
+    <i class="ti ti-alert-triangle"></i>
+    <p><strong>⚠ PERINGATAN KLB:</strong> Terdapat ≥2 kasus konfirmasi. Segera lakukan penyelidikan epidemiologi dan laporan ke Dinas Kesehatan Provinsi.</p>
+  </div>
+
+  <div id="alert-sync" class="alert alert-info" style="display:none;">
+    <i class="ti ti-info-circle"></i>
+    <p id="alert-sync-msg"></p>
+  </div>
+
+  <!-- LAST SYNC INFO -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem;">
+    <div class="section-lbl" style="margin:0;flex:1;">Ringkasan Kasus — 2026</div>
+    <div style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px;" id="last-sync-info">
+      <i class="ti ti-database" style="font-size:12px;"></i> Belum ada data
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card pink"><div class="val" id="s-total">0</div><div class="lbl">Total Kasus</div></div>
+    <div class="stat-card amber"><div class="val" id="s-suspek">0</div><div class="lbl">Suspek</div></div>
+    <div class="stat-card orange"><div class="val" id="s-probable">0</div><div class="lbl">Probable</div></div>
+    <div class="stat-card red"><div class="val" id="s-konfirmasi">0</div><div class="lbl">Konfirmasi</div></div>
+    <div class="stat-card green"><div class="val" id="s-bukan">0</div><div class="lbl">Bukan Pertusis</div></div>
+    <div class="stat-card blue"><div class="val" id="s-bulan">0</div><div class="lbl">Bulan Ini (<span id="s-nama-bulan"></span>)</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:1.5rem;margin-bottom:1.5rem;">
+    <div class="chart-wrap">
+      <div class="chart-head"><div><h3>Tren Kasus per Bulan</h3><p>Berdasarkan tanggal batuk</p></div></div>
+      <canvas id="chartTren" height="200"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-head"><div><h3>Distribusi Kelompok Usia</h3><p>Tahun usia kasus</p></div></div>
+      <canvas id="chartUsia" height="200"></canvas>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:1.5rem;margin-bottom:1.5rem;">
+    <div class="chart-wrap">
+      <div class="chart-head"><div><h3>Proporsi Klasifikasi</h3><p>Suspek / Probable / Konfirmasi</p></div></div>
+      <canvas id="chartKlas" height="200"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-head"><div><h3>Kelengkapan Imunisasi DPT</h3><p>Berdasarkan dosis yang diterima</p></div></div>
+      <canvas id="chartImun" height="200"></canvas>
+    </div>
+  </div>
+
+  <div class="section-lbl">5 Kasus Terbaru</div>
+  <div class="tbl-wrap" style="margin-bottom:1.5rem;">
+    <table>
+      <thead>
+        <tr>
+          <th>No. Epid</th><th>Nama Kasus</th><th>JK</th><th>Usia</th>
+          <th>Sumber Laporan</th><th>Tgl Batuk</th><th>Klasifikasi</th><th>Hasil Lab</th>
+        </tr>
+      </thead>
+      <tbody id="tbl-recent">
+        <tr><td colspan="8"><div class="empty-state"><i class="ti ti-cloud-download"></i><p>Klik <strong>Muat Data</strong> untuk memuat dari Google Sheets.</p></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</div>
+
+<!-- ===== DAFTAR KASUS ===== -->
+<div id="tab-daftar" class="tab-content">
+<div class="main">
+
+  <!-- TOOLBAR -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
+    <div class="section-lbl" style="margin:0;flex:1;">Semua Kasus</div>
+    <input type="text" id="q-cari" placeholder="Cari nama / no. epid..." style="font-size:13px;border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;outline:none;width:200px;font-family:inherit;" oninput="renderDaftar()"/>
+    <select id="q-klas" style="font-size:13px;border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;outline:none;background:#fff;font-family:inherit;" onchange="renderDaftar()">
+      <option value="">Semua Klasifikasi</option>
+      <option>Suspek</option><option>Probable</option>
+      <option>Konfirmasi</option><option>Bukan Pertusis</option>
+    </select>
+    <select id="q-pkm" style="font-size:13px;border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;outline:none;background:#fff;font-family:inherit;max-width:200px;" onchange="renderDaftar()">
+      <option value="">Semua Puskesmas</option>
+    </select>
+    <button class="btn btn-outline btn-sm no-print" onclick="fetchData(true)"><i class="ti ti-refresh"></i> Refresh</button>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>No</th><th>No. Epid</th><th>Nama Kasus</th><th>JK</th><th>Usia</th>
+          <th>Kecamatan</th><th>Sumber Laporan</th><th>Tgl Terima</th>
+          <th>Tgl Batuk</th><th>Apnea</th><th>Gejala Lain</th>
+          <th>Imunisasi</th><th>Bepergian</th><th>Hasil Lab</th><th>Klasifikasi</th><th>Detail</th>
+        </tr>
+      </thead>
+      <tbody id="tbl-daftar">
+        <tr><td colspan="16"><div class="empty-state"><i class="ti ti-table-off"></i><p>Belum ada data.</p></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</div>
+
+<!-- ===== PETA ===== -->
+<div id="tab-peta" class="tab-content">
+<div class="main">
+  <div class="section-lbl">Peta Sebaran Kasus Pertusis — Kab. Kapuas 2026</div>
+  <div class="alert alert-info" style="margin-bottom:1rem;">
+    <i class="ti ti-info-circle"></i>
+    <p>
+      <span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;"><span style="width:12px;height:12px;border-radius:50%;background:#E24B4A;display:inline-block;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span> Konfirmasi</span>
+      <span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;"><span style="width:12px;height:12px;border-radius:50%;background:#F57C00;display:inline-block;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span> Probable</span>
+      <span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;"><span style="width:12px;height:12px;border-radius:50%;background:#EF9F27;display:inline-block;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span> Suspek</span>
+      <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:50%;background:#1D9E75;display:inline-block;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span> Bukan Pertusis</span>
+    </p>
+  </div>
+  <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;">
+    <div id="pertusis-map"></div>
+  </div>
+</div>
+</div>
+
+<!-- ===== LAPORAN ===== -->
+<div id="tab-laporan" class="tab-content">
+<div class="main">
+
+  <div class="section-lbl">Ekspor & Laporan</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.25rem;margin-bottom:2rem;">
+
+    <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;">
+      <div style="width:44px;height:44px;background:var(--pink-l);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;">
+        <i class="ti ti-file-spreadsheet" style="font-size:22px;color:var(--pink-d);"></i>
+      </div>
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:5px;">Ekspor CSV</h3>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:1rem;">Unduh semua kasus sesuai kolom sheet Pertusis (A–AD + Klasifikasi).</p>
+      <button class="btn btn-pink btn-sm" onclick="exportCSV()"><i class="ti ti-download"></i> Unduh CSV</button>
+    </div>
+
+    <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;">
+      <div style="width:44px;height:44px;background:var(--blue-l);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;">
+        <i class="ti ti-printer" style="font-size:22px;color:var(--blue-d);"></i>
+      </div>
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:5px;">Cetak Rekap</h3>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:1rem;">Cetak ringkasan kasus untuk pelaporan rutin ke Dinas Kesehatan.</p>
+      <button class="btn btn-blue btn-sm" onclick="window.print()"><i class="ti ti-printer"></i> Cetak</button>
+    </div>
+
+    <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;">
+      <div style="width:44px;height:44px;background:var(--green-l);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;">
+        <i class="ti ti-refresh" style="font-size:22px;color:var(--green);"></i>
+      </div>
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:5px;">Refresh dari Sheets</h3>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:1rem;">Muat ulang data terbaru dari Google Sheets Pertusis.</p>
+      <button class="btn btn-green btn-sm" onclick="fetchData(true)"><i class="ti ti-cloud-download"></i> Muat Ulang</button>
+    </div>
+
+  </div>
+
+  <div class="section-lbl">Rekap per Sumber Laporan / Puskesmas</div>
+  <div class="tbl-wrap" style="margin-bottom:2rem;">
+    <table>
+      <thead>
+        <tr><th>Sumber Laporan</th><th>Suspek</th><th>Probable</th><th>Konfirmasi</th><th>Bukan Pertusis</th><th>Total</th></tr>
+      </thead>
+      <tbody id="tbl-rekap">
+        <tr><td colspan="6"><div class="empty-state" style="padding:1.5rem;"><p>Belum ada data.</p></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-lbl">Rekap per Kecamatan</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>Kecamatan</th><th>Suspek</th><th>Probable</th><th>Konfirmasi</th><th>Bukan Pertusis</th><th>Total</th></tr>
+      </thead>
+      <tbody id="tbl-rekap-kec">
+        <tr><td colspan="6"><div class="empty-state" style="padding:1.5rem;"><p>Belum ada data.</p></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</div>
+
+<!-- ===== PANDUAN ===== -->
+<div id="tab-panduan" class="tab-content">
+<div class="main">
+
+  <div class="alert alert-warn">
+    <i class="ti ti-alert-circle"></i>
+    <p>Klasifikasi otomatis pada aplikasi ini mengacu pada <strong>Pedoman Surveilans Pertusis Kemenkes RI</strong> dan <strong>definisi kasus WHO 2018</strong>. Klasifikasi dihitung dari kolom-kolom sheet Pertusis yang sudah ada.</p>
+  </div>
+
+  <div class="section-lbl">Bagaimana Sistem Mengklasifikasi Kasus</div>
+  <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:1.5rem;">
+    <p style="font-size:13px;color:var(--text2);line-height:1.9;margin-bottom:.75rem;">Sistem membaca kolom-kolom sheet dan menentukan klasifikasi secara otomatis dengan urutan prioritas:</p>
+    <div style="display:flex;flex-direction:column;gap:.6rem;">
+      <div style="display:flex;gap:10px;font-size:13px;align-items:flex-start;">
+        <span style="background:var(--red-l);color:var(--red-d);font-weight:700;padding:2px 10px;border-radius:20px;font-size:11px;flex-shrink:0;margin-top:1px;">1</span>
+        <span><strong>Hasil Pemeriksaan (kol. AD) = "Positif"</strong> → <span class="badge badge-konfirmasi">Konfirmasi</span></span>
+      </div>
+      <div style="display:flex;gap:10px;font-size:13px;align-items:flex-start;">
+        <span style="background:var(--red-l);color:var(--red-d);font-weight:700;padding:2px 10px;border-radius:20px;font-size:11px;flex-shrink:0;margin-top:1px;">2</span>
+        <span><strong>Hasil Pemeriksaan = "Negatif"</strong> → <span class="badge badge-bukan">Bukan Pertusis</span></span>
+      </div>
+      <div style="display:flex;gap:10px;font-size:13px;align-items:flex-start;">
+        <span style="background:var(--amber-l);color:var(--amber-d);font-weight:700;padding:2px 10px;border-radius:20px;font-size:11px;flex-shrink:0;margin-top:1px;">3</span>
+        <span><strong>Gejala Lain (kol. P) mengandung kata kunci pertusis</strong> + ada riwayat bepergian (kol. X) → <span class="badge badge-probable">Probable</span></span>
+      </div>
+      <div style="display:flex;gap:10px;font-size:13px;align-items:flex-start;">
+        <span style="background:var(--amber-l);color:var(--amber-d);font-weight:700;padding:2px 10px;border-radius:20px;font-size:11px;flex-shrink:0;margin-top:1px;">4</span>
+        <span><strong>Ada Tanggal Batuk (kol. N)</strong> tapi lab belum ada / pending → <span class="badge badge-suspek">Suspek</span></span>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-top:1rem;">Kata kunci gejala yang terdeteksi: <em>paroksismal, whoop, batuk rejan, muntah, apnea, sianosis</em></p>
+  </div>
+
+  <div class="section-lbl">Definisi Operasional Kasus</div>
+
+  <div style="display:flex;flex-direction:column;gap:1.25rem;margin-bottom:2rem;">
+    <div class="kriteria-box" style="border-left:4px solid var(--amber);">
+      <h4><span class="badge badge-suspek">SUSPEK</span></h4>
+      <div class="kriteria-list">
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--amber);"></div><span>Batuk ≥2 minggu <strong>DAN</strong> minimal satu: batuk paroksismal, whoop, atau muntah pasca batuk</span></div>
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--amber);"></div><span>Pada bayi &lt;6 bulan: apnea atau sianosis sebagai gejala utama</span></div>
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--amber);"></div><span>Belum ada hasil pemeriksaan laboratorium</span></div>
+      </div>
+    </div>
+    <div class="kriteria-box" style="border-left:4px solid var(--orange);">
+      <h4><span class="badge badge-probable">PROBABLE</span></h4>
+      <div class="kriteria-list">
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--orange);"></div><span>Memenuhi kriteria suspek <strong>DAN</strong> ada hubungan epidemiologis dengan kasus konfirmasi (kontak ≤21 hari)</span></div>
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--orange);"></div><span><strong>ATAU</strong> suspek yang meninggal tanpa pemeriksaan laboratorium</span></div>
+      </div>
+    </div>
+    <div class="kriteria-box" style="border-left:4px solid var(--red);">
+      <h4><span class="badge badge-konfirmasi">KONFIRMASI</span></h4>
+      <div class="kriteria-list">
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--red);"></div><span>Kultur atau PCR positif <em>Bordetella pertussis</em></span></div>
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--red);"></div><span><strong>ATAU</strong> serologi positif: peningkatan ≥4× titer anti-PT IgG/IgA</span></div>
+      </div>
+    </div>
+    <div class="kriteria-box" style="border-left:4px solid var(--green-m);">
+      <h4><span class="badge badge-bukan">BUKAN PERTUSIS</span></h4>
+      <div class="kriteria-list">
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--green-m);"></div><span>Hasil laboratorium negatif (kultur dan PCR)</span></div>
+        <div class="kriteria-item"><div class="k-dot" style="background:var(--green-m);"></div><span>Tidak memenuhi kriteria klinis atau ditemukan diagnosis lain</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-lbl">Kriteria KLB Pertusis</div>
+  <div class="kriteria-box">
+    <h4><i class="ti ti-alert-triangle" style="color:var(--red);"></i> Penetapan KLB</h4>
+    <div class="kriteria-list">
+      <div class="kriteria-item"><div class="k-dot" style="background:var(--red);"></div><span>≥1 kasus konfirmasi di wilayah yang sebelumnya bebas pertusis</span></div>
+      <div class="kriteria-item"><div class="k-dot" style="background:var(--red);"></div><span>Kluster ≥2 kasus di sekolah, fasyankes, atau komunitas dalam 3 minggu</span></div>
+      <div class="kriteria-item"><div class="k-dot" style="background:var(--red);"></div><span>Peningkatan kasus ≥2× dibanding periode sama tahun sebelumnya</span></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- MODAL DETAIL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Detail Kasus</h3>
+      <button class="modal-close" onclick="document.getElementById('modal').classList.remove('open')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div style="padding:1rem 1.5rem;border-top:1px solid var(--border);">
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('modal').classList.remove('open')"><i class="ti ti-x"></i> Tutup</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// =============================================
+// KONFIGURASI GOOGLE SHEETS
+// =============================================
+var SHEET_ID  = '1poXSOO6CVYOIDmDGHiogxmsEFo_IrwYq';
+var SHEET_GID = '1949588478';
+var CSV_URL   = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID
+              + '/export?format=csv&gid=' + SHEET_GID;
+var CACHE_KEY = 'ptb_cache_2026v2';
+var CACHE_TS  = 'ptb_cache_ts_2026v2';
+
+// =============================================
+// STATE
+// =============================================
+var DATA = [];   // array of kasus objects
+var BLN  = ['Januari','Februari','Maret','April','Mei','Juni',
+            'Juli','Agustus','September','Oktober','November','Desember'];
+
+document.getElementById('s-nama-bulan').textContent = BLN[new Date().getMonth()].substring(0,3);
+
+// =============================================
+// TABS
+// =============================================
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(function(t){ t.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'peta')     setTimeout(initPeta, 200);
+  if (name === 'daftar')   renderDaftar();
+  if (name === 'laporan')  renderRekap();
+  if (name === 'dashboard') renderDashboard();
+}
+
+// =============================================
+// FETCH DATA DARI GOOGLE SHEETS
+// =============================================
+function fetchData(forceRefresh) {
+  // Coba load dari cache dulu
+  if (!forceRefresh) {
+    var cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      try {
+        DATA = JSON.parse(cached);
+        afterLoad(false);
+        return;
+      } catch(e) {}
+    }
+  }
+
+  setLoading(true, 'Memuat data dari Google Sheets Pertusis...');
+  setSyncStatus('loading');
+
+  fetch(CSV_URL)
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' — pastikan sheet berstatus "Anyone with link can view"');
+      return r.text();
+    })
+    .then(function(csv) {
+      var rows = parseCSV(csv);
+      // Baris 0 = "Tahun 2026", baris 1 = header, baris 2+ = data
+      var dataRows = rows.slice(2).filter(function(r) {
+        return r[0] && r[0].toString().trim() !== '' && r[5] && r[5].toString().trim() !== '';
+      });
+
+      DATA = dataRows.map(function(r) {
+        return buatKasus(r);
+      });
+
+      localStorage.setItem(CACHE_KEY, JSON.stringify(DATA));
+      localStorage.setItem(CACHE_TS, new Date().toISOString());
+      afterLoad(true);
+    })
+    .catch(function(err) {
+      setLoading(false);
+      setSyncStatus('error');
+      showAlert('danger', '❌ Gagal memuat data: ' + err.message);
+    });
+}
+
+function buatKasus(r) {
+  var hasilLab = (r[29] || '-').toString().trim();
+  var gejala   = (r[15] || '').toString().toLowerCase();
+  var tglBatuk = r[13] ? r[13].toString().trim() : '';
+  var tglApnea = r[14] ? r[14].toString().trim() : '';
+  var bepergian= (r[23] || '').toString().toLowerCase();
+  var tahun    = parseInt(r[7]) || 0;
+  var bulan    = parseInt(r[8]) || 0;
+  var isBayi   = (tahun === 0 && bulan < 6);
+
+  var klas = klasifikasiOtomatis(hasilLab, gejala, tglBatuk, tglApnea, bepergian, isBayi);
+
+  return {
+    no           : r[0]  || '',
+    noEpid       : r[1]  || '',
+    sumberLaporan: r[2]  || '',
+    tglTerima    : parseGDate(r[3]  || ''),
+    tglLacak     : parseGDate(r[4]  || ''),
+    nama         : r[5]  || '',
+    jk           : r[6]  || '',
+    tahun        : r[7]  || '0',
+    bulanUsia    : r[8]  || '0',
+    alamat       : r[9]  || '',
+    desa         : r[10] || '',
+    kecamatan    : r[11] || '',
+    namaOrtu     : r[12] || '',
+    tglBatuk     : parseGDate(r[13] || ''),
+    tglApnea     : r[14] || '',
+    gejalaLain   : r[15] || '',
+    rs           : r[16] || '',
+    imun2bln     : r[17] || '',
+    imun3bln     : r[18] || '',
+    imun4bln     : r[19] || '',
+    imun18bln    : r[20] || '',
+    ori          : r[21] || '',
+    tglVaksin    : parseGDate(r[22] || ''),
+    bepergian    : r[23] || '',
+    lokasi       : r[24] || '',
+    tglPergi     : parseGDate(r[25] || ''),
+    tglKembali   : parseGDate(r[26] || ''),
+    tglAmbil     : parseGDate(r[27] || ''),
+    tglAntar     : parseGDate(r[28] || ''),
+    hasilLab     : hasilLab,
+    klasifikasi  : klas
+  };
+}
+
+function klasifikasiOtomatis(hasilLab, gejala, tglBatuk, tglApnea, bepergian, isBayi) {
+  var lab = hasilLab.toLowerCase();
+  if (lab.includes('positif') || lab.includes('positive')) return 'Konfirmasi';
+  if (lab.includes('negatif') || lab.includes('negative')) return 'Bukan Pertusis';
+
+  if (!tglBatuk || tglBatuk === '' || tglBatuk === '-') return 'Suspek';
+
+  var adaGejalaKhas = gejala.includes('paroksismal') || gejala.includes('whoop') ||
+    gejala.includes('batuk rejan') || gejala.includes('muntah') ||
+    (isBayi && (gejala.includes('apnea') || gejala.includes('sianosis') ||
+    (tglApnea && tglApnea !== 'x' && tglApnea !== '-' && tglApnea !== '')));
+
+  if (adaGejalaKhas && bepergian === 'ya') return 'Probable';
+  return 'Suspek';
+}
+
+function afterLoad(fromServer) {
+  setLoading(false);
+  setSyncStatus('ok');
+  updateBadge();
+  renderDashboard();
+  renderDaftar();
+  renderRekap();
+  populatePkmFilter();
+  if (window._petaInit) updatePetaMarkers();
+
+  var ts = localStorage.getItem(CACHE_TS);
+  var tsFmt = ts ? formatTgl(ts.substring(0,10)) + ', ' + ts.substring(11,16) : '';
+  document.getElementById('last-sync-info').innerHTML =
+    '<i class="ti ti-database" style="font-size:12px;"></i> ' +
+    DATA.length + ' kasus' + (tsFmt ? ' · ' + tsFmt : '');
+
+  if (fromServer) {
+    showAlert('success', '✅ Berhasil memuat ' + DATA.length + ' kasus dari Google Sheets.');
+  }
+}
+
+function parseGDate(s) {
+  if (!s || s === '-' || s === 'x') return s;
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0');
+  return s;
+}
+
+function parseCSV(text) {
+  var rows=[], row=[], cur='', inQ=false;
+  for (var i=0; i<text.length; i++) {
+    var c = text[i];
+    if (c==='"') { inQ = !inQ; }
+    else if (c===',' && !inQ) { row.push(cur.trim()); cur=''; }
+    else if ((c==='\n'||c==='\r') && !inQ) {
+      if (c==='\r' && text[i+1]==='\n') i++;
+      row.push(cur.trim()); rows.push(row); row=[]; cur='';
+    } else cur += c;
+  }
+  if (row.length || cur) rows.push(row.concat([cur.trim()]));
+  return rows;
+}
+
+// =============================================
+// UI HELPERS
+// =============================================
+function setLoading(on, msg) {
+  var el = document.getElementById('loading');
+  el.classList.toggle('hide', !on);
+  if (msg) document.getElementById('loading-msg').textContent = msg;
+}
+
+function setSyncStatus(state) {
+  var dot   = document.getElementById('sync-dot');
+  var label = document.getElementById('sync-label');
+  if (state === 'loading') {
+    dot.style.background = '#F4AABF';
+    label.textContent = 'Memuat...';
+  } else if (state === 'ok') {
+    dot.style.background = '#1D9E75';
+    dot.style.animation  = 'none';
+    label.textContent = 'Tersinkron';
+  } else {
+    dot.style.background = '#E24B4A';
+    dot.style.animation  = 'none';
+    label.textContent = 'Gagal — coba lagi';
+  }
+}
+
+function showAlert(type, msg) {
+  var el  = document.getElementById('alert-sync');
+  var mel = document.getElementById('alert-sync-msg');
+  el.className = 'alert alert-' + type;
+  el.style.display = 'flex';
+  mel.textContent = msg;
+  setTimeout(function(){ el.style.display='none'; }, 5000);
+}
+
+function updateBadge() {
+  document.getElementById('badge-total').textContent = DATA.length;
+}
+
+function formatTgl(s) {
+  if (!s || s==='-' || s==='x') return s || '-';
+  // Parse YYYY-MM-DD secara manual agar tidak terpengaruh timezone
+  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return parseInt(m[3]) + ' ' + BLN[parseInt(m[2])-1] + ' ' + m[1];
+  // Fallback untuk format lain
+  var d = new Date(s);
+  if (isNaN(d)) return s;
+  return d.getDate() + ' ' + BLN[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+function badgeKlas(k) {
+  var map = {
+    'Suspek'       : 'badge-suspek',
+    'Probable'     : 'badge-probable',
+    'Konfirmasi'   : 'badge-konfirmasi',
+    'Bukan Pertusis': 'badge-bukan'
+  };
+  return '<span class="badge ' + (map[k] || 'badge-suspek') + '">' + (k || 'Suspek') + '</span>';
+}
+
+function populatePkmFilter() {
+  var sel = document.getElementById('q-pkm');
+  var existing = Array.from(sel.options).map(function(o){return o.value;});
+  var pkms = [];
+  DATA.forEach(function(k){ if (k.sumberLaporan && pkms.indexOf(k.sumberLaporan) === -1) pkms.push(k.sumberLaporan); });
+  pkms.sort().forEach(function(p) {
+    if (existing.indexOf(p) === -1) {
+      var opt = document.createElement('option');
+      opt.value = p; opt.textContent = p;
+      sel.appendChild(opt);
+    }
+  });
+}
+
+// =============================================
+// DASHBOARD
+// =============================================
+var chTren, chUsia, chKlas, chImun;
+
+function renderDashboard() {
+  var suspek=0, probable=0, konfirmasi=0, bukan=0;
+  var bln = new Date().getMonth();
+  var bulanIni = 0;
+
+  DATA.forEach(function(k) {
+    var kl = k.klasifikasi;
+    if (kl==='Suspek')        suspek++;
+    else if (kl==='Probable') probable++;
+    else if (kl==='Konfirmasi') konfirmasi++;
+    else if (kl==='Bukan Pertusis') bukan++;
+
+    var tgl = k.tglBatuk || k.tglTerima;
+    if (tgl && tgl!=='-') {
+      var d = new Date(tgl);
+      if (!isNaN(d) && d.getMonth() === bln) bulanIni++;
+    }
+  });
+
+  document.getElementById('s-total').textContent     = DATA.length;
+  document.getElementById('s-suspek').textContent    = suspek;
+  document.getElementById('s-probable').textContent  = probable;
+  document.getElementById('s-konfirmasi').textContent= konfirmasi;
+  document.getElementById('s-bukan').textContent     = bukan;
+  document.getElementById('s-bulan').textContent     = bulanIni;
+
+  document.getElementById('alert-klb').style.display = konfirmasi >= 2 ? 'flex' : 'none';
+
+  // Tabel 5 terbaru (urut tgl terima)
+  var sorted = DATA.slice().sort(function(a,b){
+    return new Date(b.tglTerima||'2000-01-01') - new Date(a.tglTerima||'2000-01-01');
+  }).slice(0,5);
+
+  var tbody = document.getElementById('tbl-recent');
+  if (!sorted.length) {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="ti ti-cloud-download"></i><p>Klik <strong>Muat Data</strong>.</p></div></td></tr>';
+  } else {
+    tbody.innerHTML = sorted.map(function(k) {
+      var usia = (k.tahun||'0')+'thn' + (parseInt(k.bulanUsia)>0?' '+k.bulanUsia+'bln':'');
+      return '<tr>'
+        + '<td><code style="font-size:11px;">' + k.noEpid + '</code></td>'
+        + '<td style="font-weight:500;">' + k.nama + '</td>'
+        + '<td>' + k.jk + '</td>'
+        + '<td style="font-size:12px;">' + usia + '</td>'
+        + '<td style="font-size:12px;">' + k.sumberLaporan + '</td>'
+        + '<td style="font-size:12px;">' + formatTgl(k.tglBatuk) + '</td>'
+        + '<td>' + badgeKlas(k.klasifikasi) + '</td>'
+        + '<td style="font-size:12px;color:var(--text2);">' + (k.hasilLab!=='-'?k.hasilLab:'-') + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  renderCharts();
+}
+
+function renderCharts() {
+  // TREN
+  var tren = Array(12).fill(0);
+  DATA.forEach(function(k) {
+    var tgl = k.tglBatuk || k.tglTerima;
+    if (tgl && tgl!=='-') { var d=new Date(tgl); if(!isNaN(d)) tren[d.getMonth()]++; }
+  });
+  var ctT = document.getElementById('chartTren');
+  if (chTren) chTren.destroy();
+  chTren = new Chart(ctT, {type:'bar',
+    data:{labels:BLN.map(function(b){return b.substr(0,3);}),
+      datasets:[{label:'Kasus',data:tren,backgroundColor:'rgba(153,53,86,.75)',borderColor:'#993556',borderRadius:6}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},responsive:true}});
+
+  // USIA
+  var ug={'<1 thn':0,'1–4 thn':0,'5–9 thn':0,'10–14 thn':0,'≥15 thn':0};
+  DATA.forEach(function(k) {
+    var t=parseInt(k.tahun)||0, b=parseInt(k.bulanUsia)||0, age=t+b/12;
+    if(age<1)ug['<1 thn']++;
+    else if(age<5)ug['1–4 thn']++;
+    else if(age<10)ug['5–9 thn']++;
+    else if(age<15)ug['10–14 thn']++;
+    else ug['≥15 thn']++;
+  });
+  var ctU = document.getElementById('chartUsia');
+  if (chUsia) chUsia.destroy();
+  chUsia = new Chart(ctU, {type:'doughnut',
+    data:{labels:Object.keys(ug),datasets:[{data:Object.values(ug),backgroundColor:['#E24B4A','#F57C00','#EF9F27','#378ADD','#1D9E75'],borderWidth:2}]},
+    options:{plugins:{legend:{position:'right',labels:{font:{size:11}}}},responsive:true}});
+
+  // KLASIFIKASI
+  var kc={'Suspek':0,'Probable':0,'Konfirmasi':0,'Bukan Pertusis':0};
+  DATA.forEach(function(k){var x=k.klasifikasi||'Suspek';if(kc[x]!==undefined)kc[x]++;});
+  var ctK = document.getElementById('chartKlas');
+  if (chKlas) chKlas.destroy();
+  chKlas = new Chart(ctK, {type:'doughnut',
+    data:{labels:Object.keys(kc),datasets:[{data:Object.values(kc),backgroundColor:['#EF9F27','#F57C00','#E24B4A','#1D9E75'],borderWidth:2}]},
+    options:{plugins:{legend:{position:'right',labels:{font:{size:11}}}},responsive:true}});
+
+  // IMUNISASI
+  var ic={'Lengkap (≥3 dosis)':0,'Tidak Lengkap':0,'Tidak Diketahui':0};
+  DATA.forEach(function(k) {
+    var d=[k.imun2bln,k.imun3bln,k.imun4bln].filter(function(v){return v&&v.toLowerCase()==='ya';}).length;
+    if(d>=3)ic['Lengkap (≥3 dosis)']++;
+    else if(d>0)ic['Tidak Lengkap']++;
+    else ic['Tidak Diketahui']++;
+  });
+  var ctI = document.getElementById('chartImun');
+  if (chImun) chImun.destroy();
+  chImun = new Chart(ctI, {type:'bar',
+    data:{labels:Object.keys(ic),datasets:[{label:'Kasus',data:Object.values(ic),backgroundColor:['#1D9E75','#EF9F27','#9B979A'],borderRadius:6}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},responsive:true,indexAxis:'y'}});
+}
+
+// =============================================
+// DAFTAR KASUS
+// =============================================
+function renderDaftar() {
+  var q   = (document.getElementById('q-cari').value||'').toLowerCase();
+  var fk  = document.getElementById('q-klas').value;
+  var fpk = document.getElementById('q-pkm').value;
+
+  var filtered = DATA.filter(function(k) {
+    var matchQ = !q || k.nama.toLowerCase().includes(q) || k.noEpid.toLowerCase().includes(q);
+    var matchK = !fk  || k.klasifikasi === fk;
+    var matchP = !fpk || k.sumberLaporan === fpk;
+    return matchQ && matchK && matchP;
+  });
+
+  var tbody = document.getElementById('tbl-daftar');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="16"><div class="empty-state"><i class="ti ti-search-off"></i><p>Tidak ada data yang cocok.</p></div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(function(k, i) {
+    var usia = (k.tahun||'0')+'thn'+(parseInt(k.bulanUsia)>0?' '+k.bulanUsia+'bln':'');
+    var imunDosis = [k.imun2bln,k.imun3bln,k.imun4bln].filter(function(v){return v&&v.toLowerCase()==='ya';}).length;
+    var imunStr = imunDosis+'× DPT'+(k.ori&&k.ori.toLowerCase()==='ya'?'+ORI':'');
+    var apneaStr = (k.tglApnea&&k.tglApnea!=='x'&&k.tglApnea!==''&&k.tglApnea!=='-')
+      ? '<span style="color:var(--red-d);font-weight:600;">Ada</span>'
+      : '<span style="color:var(--text3);">–</span>';
+    var bepStr = k.bepergian && k.bepergian.toLowerCase()==='ya'
+      ? '<span style="color:var(--blue-d);">Ya</span>' + (k.lokasi?' <small style="color:var(--text3);">'+k.lokasi+'</small>':'')
+      : '–';
+    return '<tr>'
+      + '<td style="color:var(--text3);font-size:11px;">' + (i+1) + '</td>'
+      + '<td><code style="font-size:11px;">' + k.noEpid + '</code></td>'
+      + '<td style="font-weight:500;">' + k.nama + '</td>'
+      + '<td>' + k.jk + '</td>'
+      + '<td style="font-size:12px;">' + usia + '</td>'
+      + '<td style="font-size:11px;">' + (k.desa?k.desa+'<br>':'') + '<span style="color:var(--text3);">'+k.kecamatan+'</span></td>'
+      + '<td style="font-size:11px;">' + k.sumberLaporan + '</td>'
+      + '<td style="font-size:11px;">' + formatTgl(k.tglTerima) + '</td>'
+      + '<td style="font-size:11px;">' + formatTgl(k.tglBatuk) + '</td>'
+      + '<td style="font-size:11px;">' + apneaStr + '</td>'
+      + '<td style="font-size:11px;max-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+(k.gejalaLain||'')+'">' + (k.gejalaLain||'–') + '</td>'
+      + '<td style="font-size:11px;">' + imunStr + '</td>'
+      + '<td style="font-size:11px;">' + bepStr + '</td>'
+      + '<td style="font-size:11px;">' + (k.hasilLab!=='-'&&k.hasilLab?k.hasilLab:'–') + '</td>'
+      + '<td>' + badgeKlas(k.klasifikasi) + '</td>'
+      + '<td><button class="btn btn-outline btn-sm" onclick="lihatDetail(' + i + ')"><i class="ti ti-eye"></i></button></td>'
+      + '</tr>';
+  }).join('');
+
+  // simpan filtered untuk modal
+  window._filteredData = filtered;
+}
+
+// =============================================
+// MODAL DETAIL
+// =============================================
+function lihatDetail(idx) {
+  var k = window._filteredData ? window._filteredData[idx] : DATA[idx];
+  if (!k) return;
+  var imunList = [
+    k.imun2bln==='Ya'?'DPT 1 (2 bln)':null,
+    k.imun3bln==='Ya'?'DPT 2 (3 bln)':null,
+    k.imun4bln==='Ya'?'DPT 3 (4 bln)':null,
+    k.imun18bln==='Ya'?'DPT Booster (18 bln)':null,
+    k.ori==='Ya'?'ORI/BIAN':null
+  ].filter(Boolean).join(', ') || '—';
+
+  var html = '<div style="display:flex;gap:8px;align-items:center;padding:.75rem;background:var(--pink-l);border-radius:10px;margin-bottom:1rem;flex-wrap:wrap;">'
+    + badgeKlas(k.klasifikasi)
+    + '<strong style="font-size:13px;">' + k.noEpid + '</strong>'
+    + '<span style="font-size:12px;color:var(--text3);">Sumber: ' + k.sumberLaporan + '</span>'
+    + '</div>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+    + drow('Nama Kasus', k.nama) + drow('Jenis Kelamin', k.jk)
+    + drow('Usia', (k.tahun||'0')+' tahun ' + (parseInt(k.bulanUsia)>0?k.bulanUsia+' bulan':''))
+    + drow('Nama Orang Tua', k.namaOrtu||'—')
+    + drow('Alamat', [k.alamat,k.desa,'Kec. '+k.kecamatan].filter(Boolean).join(', '))
+    + drow('Tgl Terima Laporan', formatTgl(k.tglTerima))
+    + drow('Tgl Pelacakan', formatTgl(k.tglLacak))
+    + drow('Tgl Batuk', formatTgl(k.tglBatuk))
+    + drow('Tgl Apnea', k.tglApnea&&k.tglApnea!=='x'&&k.tglApnea!==''?formatTgl(k.tglApnea):'Tidak ada (x)')
+    + drow('Gejala Lain', k.gejalaLain||'—')
+    + drow('Rujukan RS', k.rs||'Tidak')
+    + drow('Imunisasi DPT', imunList)
+    + drow('Tgl Vaksin Terakhir', formatTgl(k.tglVaksin)||'—')
+    + drow('Bepergian', k.bepergian + (k.lokasi?' — '+k.lokasi:'') + (k.tglPergi?' ('+formatTgl(k.tglPergi)+'→'+formatTgl(k.tglKembali)+')':''))
+    + drow('Tgl Ambil Spesimen', formatTgl(k.tglAmbil)||'—')
+    + drow('Tgl Antar Spesimen', formatTgl(k.tglAntar)||'—')
+    + drow('Hasil Pemeriksaan', k.hasilLab||'—')
+    + '</table>';
+
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal').classList.add('open');
+}
+
+function drow(l, v) {
+  return '<tr><td style="padding:5px 8px;color:var(--text3);font-weight:500;width:42%;vertical-align:top;font-size:12px;border-bottom:.5px solid var(--border);">' + l + '</td>'
+    + '<td style="padding:5px 8px;font-weight:500;font-size:12px;border-bottom:.5px solid var(--border);">' + (v||'—') + '</td></tr>';
+}
+
+// =============================================
+// PETA
+// =============================================
+var petaMap; window._petaInit = false;
+
+// Koordinat akurat per Puskesmas (sumber: index.html portal PD3I)
+var PKM_COORDS = {
+  'Puskesmas Selat'          :{lat:-3.0217474,lng:114.3894490},
+  'Puskesmas Melati'         :{lat:-3.0162626,lng:114.3877452},
+  'Puskesmas Pulau Telo'     :{lat:-3.0006893,lng:114.3732229},
+  'Puskesmas Panamas'        :{lat:-3.0289399,lng:114.3428261},
+  'Puskesmas Barimba'        :{lat:-3.0090017,lng:114.4091764},
+  'Puskesmas Pulau Kupang'   :{lat:-3.0691117,lng:114.3671444},
+  'Puskesmas Terusan Tengah' :{lat:-3.2332199,lng:114.2431812},
+  'Puskesmas Anjir Serapat'  :{lat:-3.0822648,lng:114.4439133},
+  'Puskesmas Tamban Catur'   :{lat:-3.1849042,lng:114.3730141},
+  'Puskesmas Tamban Baru'    :{lat:-3.2352055,lng:114.3931809},
+  'Puskesmas Lupak'          :{lat:-3.2829074,lng:114.3106132},
+  'Puskesmas Basarang'       :{lat:-2.9517051,lng:114.3051465},
+  'Puskesmas Mandomai'       :{lat:-2.8202330,lng:114.3533852},
+  'Puskesmas Sei Tatas'      :{lat:-2.9050128,lng:114.4892637},
+  'Puskesmas Palingkau'      :{lat:-2.8443945,lng:114.5190171},
+  'Puskesmas Dadahup'        :{lat:-2.6575579,lng:114.6007943},
+  'Puskesmas Talekung Punei' :{lat:-2.6952080,lng:114.6222060},
+  'Puskesmas Palangkau'      :{lat:-2.6818837,lng:114.6863631},
+  'Puskesmas Lamunti'        :{lat:-2.5933591,lng:114.4343763},
+  'Puskesmas Danau Rawah'    :{lat:-1.7551156,lng:114.3414777},
+  'Puskesmas Mantangai'      :{lat:-2.5120165,lng:114.4937203},
+  'Puskesmas Timpah'         :{lat:-1.7203324,lng:114.4794052},
+  'Puskesmas Pujon'          :{lat:-1.3487854,lng:114.3672342},
+  'Puskesmas Jangkang'       :{lat:-1.1585436,lng:114.1983547},
+  'Puskesmas Sei Hanyo'      :{lat:-0.9316172,lng:114.0227836},
+  'Puskesmas Sei Pinang'     :{lat:-0.7804785,lng:114.0514266},
+  'RSUD dr. H. Soemarno Sosroatmodjo':{lat:-3.0093504,lng:114.3895964},
+  'RS Pratama Pujon'         :{lat:-1.3602657,lng:114.3451102}
+};
+
+// Fallback: koordinat per kecamatan jika puskesmas tidak ditemukan
+var KEC_COORDS = {
+  'Selat'          :{lat:-3.0180,lng:114.3860}, 'Kapuas Hilir' :{lat:-3.009, lng:114.409},
+  'Bataguh'        :{lat:-3.069, lng:114.367},  'Kapuas Timur' :{lat:-3.082, lng:114.444},
+  'Tamban Catur'   :{lat:-3.185, lng:114.373},  'Kapuas Kuala' :{lat:-3.283, lng:114.311},
+  'Basarang'       :{lat:-2.952, lng:114.305},  'Kapuas Barat' :{lat:-2.820, lng:114.353},
+  'Pulau Petak'    :{lat:-2.905, lng:114.489},  'Kapuas Murung':{lat:-2.844, lng:114.519},
+  'Dadahup'        :{lat:-2.657, lng:114.601},  'Mantangai'    :{lat:-2.512, lng:114.494},
+  'Timpah'         :{lat:-1.720, lng:114.479},  'Kapuas Tengah':{lat:-1.349, lng:114.367},
+  'Pasak Talawang' :{lat:-1.158, lng:114.198},  'Kapuas Hulu'  :{lat:-0.932, lng:114.023},
+  'Mandau Talawang':{lat:-0.780, lng:114.051}
+};
+
+function initPeta() {
+  if (window._petaInit) { updatePetaMarkers(); return; }
+  petaMap = L.map('pertusis-map').setView([-2.0, 114.4], 8);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {attribution:'&copy; OpenStreetMap', maxZoom:18}).addTo(petaMap);
+  window._petaInit = true;
+  updatePetaMarkers();
+}
+
+function updatePetaMarkers() {
+  if (!petaMap) return;
+  if (window._petaLayers) window._petaLayers.forEach(function(l){ petaMap.removeLayer(l); });
+  window._petaLayers = [];
+
+  var colorMap = {'Konfirmasi':'#E24B4A','Probable':'#F57C00','Suspek':'#EF9F27','Bukan Pertusis':'#1D9E75'};
+  DATA.forEach(function(k) {
+    // Prioritas: koordinat puskesmas (sumber laporan) → koordinat kecamatan
+    var c = PKM_COORDS[k.sumberLaporan] || KEC_COORDS[k.kecamatan];
+    if (!c) return;
+    var color = colorMap[k.klasifikasi] || '#EF9F27';
+    var icon = L.divIcon({
+      className: '',
+      html: '<div style="width:22px;height:22px;background:'+color+';border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);cursor:pointer;"></div>',
+      iconSize:[22,22], iconAnchor:[11,11], popupAnchor:[0,-13]
+    });
+    var lat = c.lat;
+    var lng = c.lng;
+    var popup = '<div style="font-size:12px;min-width:170px;">'
+      + '<strong style="font-size:13px;">' + k.nama + '</strong><br>'
+      + badgeKlas(k.klasifikasi) + '<br>'
+      + '<span style="color:#666;font-size:11px;">' + k.sumberLaporan + '</span><br>'
+      + '<span style="color:#666;font-size:11px;">Tgl Batuk: ' + formatTgl(k.tglBatuk) + '</span><br>'
+      + '<span style="color:#666;font-size:11px;">Lab: ' + (k.hasilLab!=='-'?k.hasilLab:'–') + '</span>'
+      + '</div>';
+    var m = L.marker([lat,lng],{icon:icon}).addTo(petaMap).bindPopup(popup);
+    window._petaLayers.push(m);
+  });
+}
+
+// =============================================
+// REKAP
+// =============================================
+function renderRekap() {
+  renderRekapGroup('tbl-rekap', 'sumberLaporan');
+  renderRekapGroup('tbl-rekap-kec', 'kecamatan');
+}
+
+function renderRekapGroup(tbodyId, field) {
+  var grp = {};
+  DATA.forEach(function(k) {
+    var key = k[field] || 'Tidak diketahui';
+    if (!grp[key]) grp[key] = {s:0,p:0,k:0,b:0};
+    var kl = k.klasifikasi;
+    if(kl==='Suspek')grp[key].s++;
+    else if(kl==='Probable')grp[key].p++;
+    else if(kl==='Konfirmasi')grp[key].k++;
+    else if(kl==='Bukan Pertusis')grp[key].b++;
+  });
+  var keys = Object.keys(grp).sort();
+  var tbody = document.getElementById(tbodyId);
+  if (!keys.length) {
+    tbody.innerHTML='<tr><td colspan="6"><div class="empty-state" style="padding:1.5rem;"><p>Belum ada data.</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = keys.map(function(key) {
+    var r=grp[key], total=r.s+r.p+r.k+r.b;
+    return '<tr>'
+      +'<td style="font-weight:500;">'+ key +'</td>'
+      +'<td>'+(r.s?'<span class="badge badge-suspek">'+r.s+'</span>':'–')+'</td>'
+      +'<td>'+(r.p?'<span class="badge badge-probable">'+r.p+'</span>':'–')+'</td>'
+      +'<td>'+(r.k?'<span class="badge badge-konfirmasi">'+r.k+'</span>':'–')+'</td>'
+      +'<td>'+(r.b?'<span class="badge badge-bukan">'+r.b+'</span>':'–')+'</td>'
+      +'<td style="font-weight:700;">'+total+'</td>'
+      +'</tr>';
+  }).join('');
+}
+
+// =============================================
+// EKSPOR CSV
+// =============================================
+function exportCSV() {
+  if (!DATA.length) { alert('Belum ada data.'); return; }
+  var headers = ['No','Nomor Epid','Sumber Laporan','Tanggal Terima Laporan','Tanggal Pelacakan',
+    'Nama Kasus','JK','Tahun','Bulan','Alamat','Desa','Kecamatan','Nama Orang Tua',
+    'Tanggal Batuk','Tanggal Apnea','Gejala Lain','RS',
+    'Imunisasi 2 bulan','Imunisasi 3 bulan','Imunisasi 4 bulan','Imunisasi 18 bulan','ORI',
+    'Tanggal vaksin terakhir','Bepergian','Lokasi','Tanggal Pergi','Tanggal Kembali',
+    'Tanggal Pengambilan Spesimen','Tanggal Pengantaran Spesimen','Hasil Pemeriksaan','Klasifikasi'];
+  var rows = DATA.map(function(k,i) {
+    return [i+1, k.noEpid, k.sumberLaporan, k.tglTerima, k.tglLacak,
+      k.nama, k.jk, k.tahun, k.bulanUsia, k.alamat, k.desa, k.kecamatan, k.namaOrtu,
+      k.tglBatuk, k.tglApnea, '"'+(k.gejalaLain||'').replace(/"/g,'""')+'"',
+      k.rs, k.imun2bln, k.imun3bln, k.imun4bln, k.imun18bln, k.ori,
+      k.tglVaksin, k.bepergian, k.lokasi, k.tglPergi, k.tglKembali,
+      k.tglAmbil, k.tglAntar, k.hasilLab, k.klasifikasi].join(',');
+  });
+  var blob = new Blob(['\uFEFF' + [headers.join(','), ...rows].join('\n')], {type:'text/csv;charset=utf-8;'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pertusis-kapuas-2026.csv';
+  a.click();
+}
+
+// =============================================
+// INIT — load dari cache dulu, fetch jika belum ada
+// =============================================
+(function init() {
+  var cached = localStorage.getItem(CACHE_KEY);
+  if (cached) {
+    try {
+      DATA = JSON.parse(cached);
+      afterLoad(false);
+    } catch(e) {
+      fetchData(true);
+    }
+  } else {
+    // Auto-fetch saat pertama buka
+    fetchData(true);
+  }
+})();
+</script>
+</body>
+</html>
