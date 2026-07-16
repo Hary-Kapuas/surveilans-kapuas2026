@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Surveilans AFP — Kab. Kapuas 2026</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',sans-serif;background:#f0f4f2;color:#1a1a1a;font-size:14px;}
+.topbar{background:#0F6E56;color:#fff;padding:0.9rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,0.15);}
+.topbar-left h1{font-size:16px;font-weight:600;}
+.topbar-left p{font-size:11px;opacity:0.8;margin-top:1px;}
+.topbar-right{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.hbadge{background:rgba(255,255,255,0.18);padding:3px 10px;border-radius:20px;font-size:11px;white-space:nowrap;}
+.hbadge.rate{background:rgba(255,255,255,0.28);font-weight:600;}
+.nav{background:#fff;border-bottom:1px solid #dde8e4;padding:0 1.5rem;display:flex;gap:0;overflow-x:auto;position:sticky;top:56px;z-index:999;}
+.nav-btn{padding:10px 16px;border:none;background:transparent;font-size:13px;cursor:pointer;color:#666;border-bottom:2px solid transparent;white-space:nowrap;transition:all 0.2s;}
+.nav-btn:hover{color:#0F6E56;}
+.nav-btn.active{color:#0F6E56;border-bottom-color:#0F6E56;font-weight:600;}
+.main{max-width:1100px;margin:0 auto;padding:1.2rem;}
+.section{display:none;}
+.section.active{display:block;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;}
+.card{background:#fff;border-radius:10px;padding:1rem 1.1rem;border:1px solid #e2ede9;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
+.card-lbl{font-size:11px;color:#666;margin-bottom:5px;}
+.card-val{font-size:26px;font-weight:700;color:#1a1a1a;}
+.card-sub{font-size:10px;color:#999;margin-top:2px;}
+.card.green .card-val{color:#0F6E56;}
+.card.amber .card-val{color:#854F0B;}
+.card.red .card-val{color:#A32D2D;}
+.card.purple .card-val{color:#534AB7;}
+.rate-box{border-radius:10px;padding:1rem 1.25rem;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.rate-box.ok{background:#E1F5EE;border:1px solid #9FE1CB;}
+.rate-box.warn{background:#FAEEDA;border:1px solid #FAC775;}
+.rate-val{font-size:32px;font-weight:700;}
+.rate-box.ok .rate-val{color:#0F6E56;}
+.rate-box.warn .rate-val{color:#854F0B;}
+.rate-info{}
+.rate-lbl{font-size:13px;font-weight:600;margin-bottom:2px;}
+.rate-box.ok .rate-lbl{color:#085041;}
+.rate-box.warn .rate-lbl{color:#633806;}
+.rate-desc{font-size:11px;}
+.rate-box.ok .rate-desc{color:#0F6E56;}
+.rate-box.warn .rate-desc{color:#854F0B;}
+.panel{background:#fff;border-radius:10px;padding:1rem 1.2rem;margin-bottom:12px;border:1px solid #e2ede9;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
+.panel h3{font-size:13px;font-weight:600;margin-bottom:12px;color:#333;display:flex;justify-content:space-between;align-items:center;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:600px){.two-col{grid-template-columns:1fr;}}
+.bar-row{margin-bottom:7px;}
+.bar-lbl{font-size:11px;color:#555;margin-bottom:3px;display:flex;justify-content:space-between;}
+.bar-track{height:14px;background:#f0f4f2;border-radius:4px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;background:#1D9E75;transition:width 0.5s ease;}
+.tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid #e2ede9;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{text-align:left;padding:7px 10px;background:#f5faf7;color:#555;font-weight:600;white-space:nowrap;}
+td{padding:6px 10px;border-bottom:1px solid #f0f4f2;color:#333;vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#fafcfb;}
+.sbadge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;}
+.s-neg{background:#EAF3DE;color:#3B6D11;}
+.s-pos{background:#FCEBEB;color:#A32D2D;}
+.s-wait{background:#FAEEDA;color:#854F0B;}
+#map{height:420px;border-radius:10px;width:100%;border:1px solid #e2ede9;}
+.legend-map{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;margin-top:10px;align-items:center;}
+.legend-item{display:flex;align-items:center;gap:5px;}
+.legend-circle{display:inline-block;border-radius:50%;border:2px solid rgba(255,255,255,0.8);}
+.map-filter{font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid #dde8e4;background:#fff;color:#333;cursor:pointer;}
+.map-note{font-size:11px;color:#888;font-style:italic;}
+.admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:6px;margin-bottom:12px;}
+.pop-item{display:flex;align-items:center;gap:8px;background:#f5faf7;border:1px solid #e2ede9;border-radius:6px;padding:5px 10px;}
+.pop-item label{font-size:11px;color:#555;flex:1;}
+.pop-item input{width:90px;font-size:12px;padding:4px 8px;border:1px solid #ccc;border-radius:5px;text-align:right;}
+.save-btn{padding:8px 20px;background:#0F6E56;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:600;}
+.save-btn:hover{background:#085041;}
+.refresh-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #dde8e4;background:#fff;cursor:pointer;color:#666;}
+.refresh-btn:hover{background:#f5faf7;}
+.exp-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #dde8e4;background:#fff;cursor:pointer;color:#0F6E56;font-weight:600;}
+.kinerja-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;}
+.loading-screen{text-align:center;padding:4rem 2rem;color:#666;}
+.loading-screen .spinner{width:36px;height:36px;border:3px solid #e2ede9;border-top-color:#1D9E75;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 1rem;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.err-screen{text-align:center;padding:3rem;color:#A32D2D;background:#FCEBEB;border-radius:10px;}
+.auto-badge{background:#E1F5EE;color:#0F6E56;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;}
+/* ── Admin PIN System ── */
+.pin-overlay{background:#fff;border:1.5px solid #e2ede9;border-radius:12px;padding:2rem 1.5rem;text-align:center;max-width:360px;margin:0 auto 16px;box-shadow:0 4px 20px rgba(0,0,0,0.08);}
+.pin-overlay h4{font-size:15px;font-weight:700;color:#0F6E56;margin-bottom:6px;}
+.pin-overlay p{font-size:12px;color:#888;margin-bottom:16px;line-height:1.6;}
+.pin-icon{font-size:2.5rem;margin-bottom:10px;}
+.pin-input-wrap{display:flex;gap:8px;justify-content:center;margin-bottom:14px;align-items:center;}
+.pin-input{width:130px;font-size:16px;padding:8px 12px;border:1.5px solid #ccc;border-radius:8px;text-align:center;letter-spacing:4px;font-family:monospace;}
+.pin-input:focus{border-color:#0F6E56;outline:none;}
+.pin-btn{padding:9px 20px;background:#0F6E56;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:600;}
+.pin-btn:hover{background:#085041;}
+.pin-err{font-size:12px;color:#A32D2D;margin-top:-8px;margin-bottom:10px;display:none;}
+.admin-bar{display:flex;align-items:center;justify-content:space-between;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:8px;padding:8px 14px;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+.admin-bar-info{font-size:12px;color:#085041;font-weight:600;}
+.admin-bar-info span{background:#0F6E56;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;margin-right:8px;}
+.lock-btn{padding:6px 14px;background:#A32D2D;color:#fff;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:600;}
+.lock-btn:hover{background:#7a1f1f;}
+.change-pin-btn{padding:6px 14px;background:#fff;color:#0F6E56;border:1.5px solid #0F6E56;border-radius:7px;font-size:12px;cursor:pointer;font-weight:600;}
+.change-pin-btn:hover{background:#f0faf5;}
+.pop-item input:disabled{background:#f5f5f5;color:#bbb;cursor:not-allowed;border-color:#e0e0e0;}
+.save-btn:disabled{background:#bbb;cursor:not-allowed;}
+.locked-notice{display:flex;align-items:center;gap:8px;font-size:12px;color:#854F0B;background:#FAEEDA;border:1px solid #FAC775;border-radius:7px;padding:8px 12px;margin-bottom:12px;}
+.modal-pin{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:2000;display:none;align-items:center;justify-content:center;}
+.modal-pin.on{display:flex;}
+.modal-pin-box{background:#fff;border-radius:14px;padding:2rem;width:min(340px,90vw);box-shadow:0 8px 40px rgba(0,0,0,0.2);text-align:center;}
+.modal-pin-box h4{font-size:15px;font-weight:700;margin-bottom:6px;color:#333;}
+.modal-pin-box p{font-size:12px;color:#888;margin-bottom:16px;}
+</style>
+</head>
+<body>
+
+<!-- Modal PIN Admin -->
+<div class="modal-pin" id="pin-change-modal" onclick="if(event.target===this)closePinModal()">
+  <div class="modal-pin-box">
+    <h4 id="pin-modal-title">🔐 Verifikasi PIN Admin</h4>
+    <p id="pin-modal-desc">Masukkan PIN untuk mengakses pengaturan data penduduk.</p>
+    <div id="pin-login-fields">
+      <input class="pin-input" type="password" id="pin-modal-old" placeholder="••••" maxlength="8"
+        onkeydown="if(event.key==='Enter')submitPinModal()"
+        style="width:140px;font-size:18px;padding:10px;border:1.5px solid #ccc;border-radius:8px;text-align:center;letter-spacing:6px;margin-bottom:10px;display:block;margin:0 auto 10px;">
+    </div>
+    <div id="pin-change-fields" style="display:none;">
+      <input class="pin-input" type="password" id="pin-modal-new" placeholder="PIN baru" maxlength="8"
+        style="width:160px;font-size:14px;padding:8px;border:1.5px solid #ccc;border-radius:8px;text-align:center;letter-spacing:4px;margin-bottom:8px;display:block;margin:0 auto 8px;">
+      <input class="pin-input" type="password" id="pin-modal-new2" placeholder="Konfirmasi PIN" maxlength="8"
+        onkeydown="if(event.key==='Enter')submitPinModal()"
+        style="width:160px;font-size:14px;padding:8px;border:1.5px solid #ccc;border-radius:8px;text-align:center;letter-spacing:4px;margin-bottom:8px;display:block;margin:0 auto 8px;">
+    </div>
+    <div id="pin-modal-err" style="font-size:12px;color:#A32D2D;margin-bottom:8px;display:none;"></div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:4px;">
+      <button onclick="closePinModal()" style="padding:8px 16px;border:1px solid #ddd;background:#fff;border-radius:7px;cursor:pointer;font-size:13px;">Batal</button>
+      <button onclick="submitPinModal()" class="pin-btn">Masuk</button>
+    </div>
+    <p style="font-size:10px;color:#bbb;margin-top:12px;">PIN default: 1234 (ganti segera)</p>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>🦠 Surveilans AFP — Acute Flaccid Paralysis</h1>
+    <p>Kabupaten Kapuas, Kalimantan Tengah · Tahun 2026</p>
+  </div>
+  <div class="topbar-right">
+    <span class="hbadge" id="hbadge-time">Memuat...</span>
+    <span class="hbadge" id="hbadge-total">— kasus</span>
+    <span class="hbadge rate" id="hbadge-rate">AFP Rate: —</span>
+  </div>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showSec('dashboard')">📊 Dashboard</button>
+  <button class="nav-btn" onclick="showSec('peta')">🗺️ Peta Sebaran</button>
+  <button class="nav-btn" onclick="showSec('grafik')">📈 Grafik & Tren</button>
+  <button class="nav-btn" onclick="showSec('data')">📋 Data Kasus</button>
+  <button class="nav-btn" onclick="showSec('laporan')">📄 Laporan</button>
+  <button class="nav-btn" onclick="showSec('admin')">⚙️ Pengaturan</button>
+</nav>
+
+<div class="main">
+  <div id="sec-dashboard" class="section active">
+    <div class="loading-screen"><div class="spinner"></div>Memuat data dari Google Sheets...</div>
+  </div>
+  <div id="sec-peta" class="section">
+    <div class="panel">
+      <h3>
+        Sebaran Kasus AFP per Kecamatan — Kinerja Surveilans
+        <span class="auto-badge">Real-time</span>
+      </h3>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+        <select class="map-filter" id="map-filter" onchange="updateMap()">
+          <option value="all">Semua Kasus</option>
+          <option value="neg">Negatif Polio</option>
+          <option value="pos">Positif Polio</option>
+          <option value="wait">Menunggu Lab</option>
+        </select>
+        <span class="map-note">Semakin banyak kasus ditemukan = kinerja surveilans lebih baik</span>
+      </div>
+      <div id="map"></div>
+      <div class="legend-map">
+        <strong style="font-size:11px;color:#555">Kinerja:</strong>
+        <span class="legend-item"><span class="legend-circle" style="width:12px;height:12px;background:#B4B2A9;border-color:#999"></span>Belum ada penemuan</span>
+        <span class="legend-item"><span class="legend-circle" style="width:14px;height:14px;background:#EF9F27;border-color:#BA7517"></span>1–2 kasus (rendah)</span>
+        <span class="legend-item"><span class="legend-circle" style="width:16px;height:16px;background:#5DCAA5;border-color:#1D9E75"></span>3–4 kasus (cukup)</span>
+        <span class="legend-item"><span class="legend-circle" style="width:18px;height:18px;background:#0F6E56;border-color:#085041"></span>≥5 kasus (baik)</span>
+        <span style="font-size:10px;color:#aaa;width:100%;margin-top:4px">© OpenStreetMap · Klik lingkaran untuk detail kasus</span>
+      </div>
+    </div>
+  </div>
+  <div id="sec-grafik" class="section"></div>
+  <div id="sec-data" class="section"></div>
+  <div id="sec-laporan" class="section"></div>
+  <div id="sec-admin" class="section"></div>
+</div>
+
+<script>
+// ============================================================
+// KONFIGURASI — Sesuaikan jika diperlukan
+// ============================================================
+const SHEET_ID = '1poXSOO6CVYOIDmDGHiogxmsEFo_IrwYq';
+const GID      = '1179490124';
+
+// Data penduduk <15 tahun per kecamatan (edit di tab Pengaturan)
+// 17 kecamatan resmi Kabupaten Kapuas — penduduk usia <15 tahun
+// Update angka sesuai data BPS / Disdukcapil terbaru di tab Pengaturan
+let PENDUDUK = {
+  'Selat':          8500,
+  'Kapuas Hilir':   3600,
+  'Bataguh':        4300,
+  'Kapuas Timur':   5100,
+  'Tamban Catur':   2800,
+  'Kapuas Kuala':   4200,
+  'Basarang':       5800,
+  'Kapuas Barat':   4100,
+  'Pulau Petak':    4900,
+  'Kapuas Murung':  2800,
+  'Dadahup':        3100,
+  'Mantangai':      6200,
+  'Timpah':         2200,
+  'Kapuas Tengah':  3200,
+  'Pasak Talawang': 1500,
+  'Kapuas Hulu':    3400,
+  'Mandau Talawang':1800,
+};
+
+// ── Load nilai PENDUDUK dari localStorage jika sudah pernah disimpan ──
+// Ini memastikan Dashboard, Laporan, dan Pengaturan selalu pakai data yang sama
+const AFP_POP_KEY = 'afp_penduduk_kapuas';
+(function loadPendudukFromStorage(){
+  try {
+    const saved = localStorage.getItem(AFP_POP_KEY);
+    if(saved){
+      const parsed = JSON.parse(saved);
+      Object.keys(PENDUDUK).forEach(k=>{ if(parsed[k]!=null) PENDUDUK[k]=parsed[k]; });
+    }
+  } catch(e){}
+})();
+
+const KECCOORDS = {
+  'Selat':          [-2.990, 114.588],
+  'Kapuas Hilir':   [-2.780, 114.850],
+  'Bataguh':        [-3.080, 114.320],
+  'Kapuas Timur':   [-3.050, 114.380],
+  'Tamban Catur':   [-3.120, 114.300],
+  'Kapuas Kuala':   [-2.850, 114.720],
+  'Basarang':       [-3.100, 114.680],
+  'Kapuas Barat':   [-2.650, 113.700],
+  'Pulau Petak':    [-3.150, 114.500],
+  'Kapuas Murung':  [-3.300, 114.550],
+  'Dadahup':        [-3.250, 114.750],
+  'Mantangai':      [-2.500, 114.200],
+  'Timpah':         [-1.800, 113.600],
+  'Kapuas Tengah':  [-2.300, 113.950],
+  'Pasak Talawang': [-2.500, 114.900],
+  'Kapuas Hulu':    [-2.100, 113.800],
+  'Mandau Talawang':[-2.600, 114.800],
+};
+
+// ============================================================
+const TOTAL_POP = () => Object.values(PENDUDUK).reduce((a,b)=>a+b,0);
+const GURL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
+
+let allData = [];
+let currentSec = 'dashboard';
+let mapObj = null, mapMarkers = [];
+let chartBulan = null, chartUsia = null, chartEpi = null;
+
+// ---- Warna kinerja surveilans (lebih banyak = lebih baik) ----
+function getColor(n){ return n===0?'#B4B2A9':n<=2?'#EF9F27':n<=4?'#5DCAA5':'#0F6E56'; }
+function getKinerja(n){ return n===0?'Belum ada penemuan':n<=2?'Penemuan rendah':n<=4?'Cukup baik':'Kinerja baik'; }
+
+// ---- Nav ----
+function showSec(s){
+  currentSec = s;
+  document.querySelectorAll('.section').forEach(el=>el.classList.remove('active'));
+  document.getElementById('sec-'+s).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['dashboard','peta','grafik','data','laporan','admin'][i]===s);
+  });
+  if(s==='peta') setTimeout(initMap,150);
+  if(s==='grafik') setTimeout(renderGrafik,100);
+  if(s==='data') renderData();
+  if(s==='laporan') renderLaporan();
+  if(s==='admin') renderAdmin();
+}
+
+// ---- Helpers ----
+// Parse tanggal format DD/MM/YYYY atau YYYY-MM-DD dengan benar
+function parseDate(v){
+  if(!v) return null;
+  const s = String(v).trim();
+  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(dmy) return new Date(+dmy[3], +dmy[2]-1, +dmy[1]);
+  const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(ymd) return new Date(+ymd[1], +ymd[2]-1, +ymd[3]);
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+function sbadge(h){
+  if(!h) return '<span class="sbadge s-wait">Menunggu Lab</span>';
+  const l=h.toLowerCase();
+  if(l.includes('negatif')) return '<span class="sbadge s-neg">Negatif</span>';
+  if(l.includes('positif')) return '<span class="sbadge s-pos">Positif Polio</span>';
+  return '<span class="sbadge s-wait">'+h+'</span>';
+}
+function fmtD(v){
+  if(!v) return '-';
+  const d = parseDate(v);
+  if(!d) return v;
+  return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+}
+function countBy(data,key){const c={};data.forEach(d=>{const v=d[key]||'Tidak Diketahui';c[v]=(c[v]||0)+1;});return c;}
+function afpRate(){
+  const np=allData.filter(d=>!d.hasil||!d.hasil.toLowerCase().includes('positif')).length;
+  const pop=TOTAL_POP();
+  return pop?np/pop*100000:0;
+}
+
+// ---- Parse Google Sheets gviz response ----
+function parseRows(rows){
+  const data=[];
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i].c;
+    if(!r) continue;
+    // Cari baris data: kolom B (index 1) berisi nomor epid (pola angka)
+    const b = r[1]&&r[1].v!=null ? String(r[1].v) : '';
+    if(!b || b.trim()==='' || isNaN(Number(b.slice(0,3)))) continue;
+    const g=(idx)=>r[idx]&&r[idx].v!=null?r[idx].v:'';
+    const gf=(idx)=>{if(!r[idx])return '';return r[idx].f||String(r[idx].v)||'';};
+    // Mapping kolom spreadsheet "Arsip Kasus PD3I":
+    // A(0)=No B(1)=NoEpid C(2)=Sumber D(3)=TglTerima E(4)=TglPelacakan
+    // F(5)=Nama G(6)=JK H(7)=UmurThn I(8)=UmurBln J(9)=Alamat
+    // K(10)=Kelurahan L(11)=Kecamatan M(12)=NamaOrtua N(13)=TglSakit
+    // O(14)=TglLumpuh P(15)=Tradisional Q(16)=RS R(17)=Akut S(18)=Layuh
+    // T(19)=Rudapaksa U(20)=Demam V(21)=Bepergian W(22)=KontakImunisasi
+    // X(23)=OPVRutin Y(24)=IPVRutin Z(25)=Hexavalen
+    // AA(26)=OPV_PIN AB(27)=IPV_PIN
+    // AC(28)=TglImunOPV AD(29)=TglImunIPV AE(30)=TglImunHexa
+    // AF(31)=SpesimenI AG(32)=SpesimenII AH(33)=TglAntarSpesimen
+    // AI(34)=HasilPemeriksaan
+    data.push({
+      no:g(0),noEpid:g(1),sumber:g(2),tglTerima:gf(3),tglPelacakan:gf(4),
+      nama:g(5),jk:g(6),umurThn:g(7),umurBln:g(8),
+      alamat:g(9),kelurahan:g(10),kecamatan:g(11),namaOrtua:g(12),
+      tglSakit:gf(13),tglLumpuh:gf(14),tradisional:g(15),rs:g(16),
+      akut:g(17),layuh:g(18),rudapaksa:g(19),demam:g(20),bepergian:g(21),
+      kontakImunisasi:g(22),
+      opvRutin:g(23),ipvRutin:g(24),hexavalen:g(25),
+      opvPin:g(26),ipvPin:g(27),
+      tglImunOpv:gf(28),tglImunIpv:gf(29),tglImunHexa:gf(30),
+      tglAmbil:gf(31),tglAmbil2:gf(32),tglAntar:gf(33),
+      hasil:g(34),
+    });
+  }
+  return data;
+}
+
+// ---- Dashboard ----
+function renderDashboard(){
+  const el=document.getElementById('sec-dashboard');
+  const total=allData.length;
+  const neg=allData.filter(d=>d.hasil&&d.hasil.toLowerCase().includes('negatif')).length;
+  const pos=allData.filter(d=>d.hasil&&d.hasil.toLowerCase().includes('positif')).length;
+  const tunggu=total-neg-pos;
+  const lk=allData.filter(d=>d.jk==='L').length;
+  const pr=allData.filter(d=>d.jk==='P').length;
+  const rate=afpRate();
+  const rateFmt=rate.toFixed(2);
+  const rateOk=rate>=2;
+
+  const byCamat=countBy(allData,'kecamatan');
+  const maxC=Math.max(...Object.values(byCamat),1);
+  const camatBars=Object.entries(byCamat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+    <div class="bar-row">
+      <div class="bar-lbl"><span>${k}</span><span><b>${v}</b> kasus</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxC*100)}%"></div></div>
+    </div>`).join('');
+
+  const recent=allData.slice(-5).reverse().map(d=>`
+    <tr>
+      <td style="font-size:10px;white-space:nowrap">${d.noEpid||'-'}</td>
+      <td>${d.nama||'-'}</td>
+      <td>${d.umurThn?d.umurThn+' thn':'-'}</td>
+      <td>${d.kecamatan||'-'}</td>
+      <td style="white-space:nowrap">${d.tglLumpuh||'-'}</td>
+      <td>${sbadge(d.hasil)}</td>
+    </tr>`).join('');
+
+  el.innerHTML=`
+    <div class="cards">
+      <div class="card"><div class="card-lbl">Total Kasus AFP</div><div class="card-val">${total}</div><div class="card-sub">Tahun 2026</div></div>
+      <div class="card amber"><div class="card-lbl">Menunggu Lab</div><div class="card-val">${tunggu}</div><div class="card-sub">Belum ada hasil</div></div>
+      <div class="card green"><div class="card-lbl">Negatif Polio</div><div class="card-val">${neg}</div><div class="card-sub">Non-Polio AFP</div></div>
+      <div class="card red"><div class="card-lbl">Positif Polio</div><div class="card-val">${pos}</div><div class="card-sub">Konfirmasi lab</div></div>
+      <div class="card purple"><div class="card-lbl">Non-Polio AFP Rate</div><div class="card-val">${rateFmt}</div><div class="card-sub">per 100.000 &lt;15 thn</div></div>
+    </div>
+
+    <div class="rate-box ${rateOk?'ok':'warn'}">
+      <div class="rate-val">${rateFmt}<span style="font-size:15px;font-weight:400"> / 100.000</span></div>
+      <div class="rate-info">
+        <div class="rate-lbl">Non-Polio AFP Rate — Kabupaten Kapuas 2026</div>
+        <div class="rate-desc">${rateOk?'✅ Memenuhi target WHO (≥2/100.000)':'⚠️ Belum memenuhi target WHO (≥2/100.000)'}</div>
+        <div class="rate-desc" style="margin-top:3px">Populasi &lt;15 tahun: ${TOTAL_POP().toLocaleString('id-ID')} jiwa · Non-Polio AFP: ${allData.filter(d=>!d.hasil||!d.hasil.toLowerCase().includes('positif')).length} kasus</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="panel">
+        <h3>Kasus per Kecamatan</h3>
+        ${total===0?'<p style="font-size:12px;color:#999;text-align:center;padding:1rem">Belum ada data</p>':camatBars}
+      </div>
+      <div class="panel">
+        <h3>Profil Klinis & Demografi</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div><div style="font-size:11px;color:#666;margin-bottom:2px">Akut</div><div style="font-size:22px;font-weight:700;color:#0F6E56">${allData.filter(d=>d.akut==='Ya').length}</div></div>
+          <div><div style="font-size:11px;color:#666;margin-bottom:2px">Layuh</div><div style="font-size:22px;font-weight:700;color:#0F6E56">${allData.filter(d=>d.layuh==='Ya').length}</div></div>
+          <div><div style="font-size:11px;color:#666;margin-bottom:2px">Demam</div><div style="font-size:22px;font-weight:700;color:#854F0B">${allData.filter(d=>d.demam==='Ya').length}</div></div>
+          <div><div style="font-size:11px;color:#666;margin-bottom:2px">Bepergian</div><div style="font-size:22px;font-weight:700;color:#854F0B">${allData.filter(d=>d.bepergian==='Ya').length}</div></div>
+        </div>
+        <div style="border-top:1px solid #f0f4f2;padding-top:10px;">
+          <div style="font-size:11px;color:#666;margin-bottom:6px;font-weight:600">Jenis Kelamin</div>
+          <div style="display:flex;gap:16px;">
+            <span style="font-size:13px">🔵 Laki-laki: <b>${lk}</b></span>
+            <span style="font-size:13px">🔴 Perempuan: <b>${pr}</b></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>5 Kasus Terbaru <button class="refresh-btn" onclick="loadData()">↻ Refresh</button></h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>No. Epid</th><th>Nama</th><th>Umur</th><th>Kecamatan</th><th>Tgl Lumpuh</th><th>Hasil Lab</th></tr></thead>
+          <tbody>${total===0?'<tr><td colspan="6" style="text-align:center;padding:2rem;color:#999">Belum ada kasus tercatat</td></tr>':recent}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ---- Peta ----
+function initMap(){
+  if(!mapObj){
+    mapObj=L.map('map',{center:[-2.5,114.55],zoom:8});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(mapObj);
+  }
+  updateMap();
+}
+
+function updateMap(){
+  if(!mapObj) return;
+  mapMarkers.forEach(m=>m.remove());
+  mapMarkers=[];
+
+  const filter=document.getElementById('map-filter')?.value||'all';
+  let filtered=allData;
+  if(filter==='neg') filtered=allData.filter(d=>d.hasil&&d.hasil.toLowerCase().includes('negatif'));
+  if(filter==='pos') filtered=allData.filter(d=>d.hasil&&d.hasil.toLowerCase().includes('positif'));
+  if(filter==='wait') filtered=allData.filter(d=>!d.hasil||(!d.hasil.toLowerCase().includes('negatif')&&!d.hasil.toLowerCase().includes('positif')));
+
+  const byCamat=countBy(filtered,'kecamatan');
+
+  Object.entries(KECCOORDS).forEach(([kec,coords])=>{
+    const n=byCamat[kec]||0;
+    const color=getColor(n);
+    const kinerja=getKinerja(n);
+    const r=n===0?9:Math.min(13+n*6,42);
+
+    const circle=L.circleMarker(coords,{
+      radius:r,fillColor:color,color:'#fff',weight:2,opacity:1,fillOpacity:n===0?0.4:0.88
+    });
+
+    const kasusKec=filtered.filter(d=>d.kecamatan===kec);
+    circle.bindPopup(`
+      <b style="font-size:13px">${kec}</b><br>
+      <span style="color:${color};font-size:11px;font-weight:600">● ${kinerja}</span><br>
+      <span style="font-size:12px">Kasus ditemukan: <b>${n}</b></span>
+      ${kasusKec.length>0?'<hr style="margin:4px 0">'+kasusKec.map(d=>`<span style="font-size:11px">• ${d.nama||'-'}, ${d.umurThn||'?'} thn — ${d.hasil||'Menunggu Lab'}</span>`).join('<br>'):'<br><i style="font-size:11px;color:#888">Belum ada penemuan kasus</i>'}`);
+    circle.addTo(mapObj);
+    mapMarkers.push(circle);
+
+    if(n>0){
+      const lbl=L.divIcon({className:'',html:`<div style="font-size:11px;font-weight:700;color:#fff;text-align:center;pointer-events:none;line-height:1">${n}</div>`,iconSize:[20,20],iconAnchor:[10,10]});
+      const m2=L.marker(coords,{icon:lbl,interactive:false});
+      m2.addTo(mapObj);
+      mapMarkers.push(m2);
+    }
+  });
+}
+
+// ---- Grafik ----
+function renderGrafik(){
+  const el=document.getElementById('sec-grafik');
+  const BULAN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+  const byBulan=Array(12).fill(0);
+  allData.forEach(d=>{
+    const dt=parseDate(d.tglLumpuh);
+    if(dt&&dt.getFullYear()===2026) byBulan[dt.getMonth()]++;
+  });
+
+  const ULBL=['0–4 thn','5–9 thn','10–14 thn','≥15 thn','Tdk Diket.'];
+  const byUsia=[0,0,0,0,0];
+  allData.forEach(d=>{
+    const t=Number(d.umurThn);
+    if(isNaN(t)) byUsia[4]++;
+    else if(t<=4) byUsia[0]++;
+    else if(t<=9) byUsia[1]++;
+    else if(t<=14) byUsia[2]++;
+    else byUsia[3]++;
+  });
+
+  const epiMap={};
+  allData.forEach(d=>{
+    if(!d.tglLumpuh) return;
+    const dt=parseDate(d.tglLumpuh);
+    if(!dt) return;
+    const key=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+    epiMap[key]=(epiMap[key]||0)+1;
+  });
+  const epiKeys=Object.keys(epiMap).sort();
+
+  el.innerHTML=`
+    <div class="panel"><h3>Kasus AFP per Bulan 2026</h3><div style="position:relative;height:200px"><canvas id="chartBulan"></canvas></div></div>
+    <div class="two-col">
+      <div class="panel"><h3>Distribusi Kelompok Usia</h3><div style="position:relative;height:180px"><canvas id="chartUsia"></canvas></div></div>
+      <div class="panel"><h3>Rawat Inap vs Rawat Jalan</h3><div style="position:relative;height:180px"><canvas id="chartRS"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <h3>Kurva Epidemiologi (Tanggal Lumpuh)</h3>
+      <p style="font-size:11px;color:#888;margin-bottom:8px">Setiap batang = jumlah kasus berdasarkan tanggal mulai lumpuh</p>
+      <div style="position:relative;height:180px"><canvas id="chartEpi"></canvas></div>
+    </div>`;
+
+  const tc='#666', gc='rgba(0,0,0,0.06)';
+  const baseOpts=()=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1,color:tc,font:{size:11}},grid:{color:gc}},x:{ticks:{color:tc,font:{size:11}},grid:{display:false}}}});
+
+  if(chartBulan) chartBulan.destroy();
+  chartBulan=new Chart(document.getElementById('chartBulan'),{type:'bar',data:{labels:BULAN,datasets:[{label:'Kasus AFP',data:byBulan,backgroundColor:'#5DCAA5',borderRadius:5,hoverBackgroundColor:'#1D9E75'}]},options:baseOpts()});
+
+  if(chartUsia) chartUsia.destroy();
+  chartUsia=new Chart(document.getElementById('chartUsia'),{type:'bar',data:{labels:ULBL,datasets:[{label:'Kasus',data:byUsia,backgroundColor:['#9FE1CB','#5DCAA5','#1D9E75','#0F6E56','#B4B2A9'],borderRadius:5}]},options:baseOpts()});
+
+  const rsRawatInap=allData.filter(d=>d.rs&&d.rs.toLowerCase()!=='tidak'&&d.rs!==''&&d.rs!=='Tidak').length;
+  const rsRawatJalan=allData.length-rsRawatInap;
+  if(chartEpi) chartEpi.destroy();
+  new Chart(document.getElementById('chartRS'),{type:'doughnut',data:{labels:['Rawat Inap','Rawat Jalan'],datasets:[{data:[rsRawatInap,rsRawatJalan],backgroundColor:['#1D9E75','#9FE1CB'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},color:tc}}}}});
+
+  chartEpi=new Chart(document.getElementById('chartEpi'),{type:'bar',data:{labels:epiKeys.length?epiKeys:['(Belum ada data)'],datasets:[{label:'Kasus',data:epiKeys.length?epiKeys.map(k=>epiMap[k]):[0],backgroundColor:'#1D9E75',borderRadius:4}]},options:{...baseOpts(),scales:{...baseOpts().scales,x:{ticks:{color:tc,font:{size:10},maxRotation:50},grid:{display:false}}}}});
+}
+
+// ---- Data Kasus ----
+function renderData(){
+  const el=document.getElementById('sec-data');
+  const rows=allData.map((d,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td style="font-size:10px;white-space:nowrap">${d.noEpid||'-'}</td>
+      <td style="white-space:nowrap">${d.nama||'-'}</td>
+      <td>${d.jk||'-'}</td>
+      <td style="white-space:nowrap">${d.umurThn?d.umurThn+' thn'+(d.umurBln?' '+d.umurBln+' bln':''):'-'}</td>
+      <td>${d.kecamatan||'-'}</td>
+      <td>${d.kelurahan||'-'}</td>
+      <td>${d.sumber||'-'}</td>
+      <td style="white-space:nowrap">${d.tglLumpuh||'-'}</td>
+      <td>${[d.akut==='Ya'?'Akut':'',d.layuh==='Ya'?'Layuh':'',d.demam==='Ya'?'Demam':''].filter(Boolean).join(', ')||'-'}</td>
+      <td>${d.opvRutin||'-'}</td>
+      <td>${sbadge(d.hasil)}</td>
+    </tr>`).join('');
+
+  el.innerHTML=`
+    <div class="panel">
+      <h3>Daftar Kasus AFP 2026 (${allData.length} kasus) <button class="exp-btn" onclick="exportCSV()">⬇ Ekspor CSV</button></h3>
+      <div class="tbl-wrap"><table style="min-width:900px">
+        <thead><tr><th>#</th><th>No. Epid</th><th>Nama</th><th>JK</th><th>Umur</th><th>Kecamatan</th><th>Kelurahan</th><th>Sumber</th><th>Tgl Lumpuh</th><th>Gejala</th><th>OPV Rutin</th><th>Hasil Lab</th></tr></thead>
+        <tbody>${allData.length===0?'<tr><td colspan="12" style="text-align:center;padding:2rem;color:#999">Belum ada data kasus</td></tr>':rows}</tbody>
+      </table></div>
+    </div>
+    <div class="panel">
+      <h3>Detail Imunisasi & Spesimen</h3>
+      <div class="tbl-wrap"><table style="min-width:700px">
+        <thead><tr><th>Nama</th><th>OPV Rutin</th><th>IPV Rutin</th><th>OPV PIN/ORI</th><th>IPV PIN/ORI</th><th>Tgl Ambil</th><th>Tgl Antar</th><th>Hasil Lab</th></tr></thead>
+        <tbody>${allData.length===0?'<tr><td colspan="8" style="text-align:center;padding:1rem;color:#999">-</td></tr>':allData.map(d=>`
+          <tr><td>${d.nama||'-'}</td><td>${d.opvRutin||'-'}</td><td>${d.ipvRutin||'-'}</td><td>${d.opvPin||'-'}</td><td>${d.ipvPin||'-'}</td>
+          <td style="white-space:nowrap;font-size:11px">${d.tglAmbil||'-'}</td><td style="white-space:nowrap;font-size:11px">${d.tglAntar||'-'}</td><td>${sbadge(d.hasil)}</td></tr>`).join('')}
+        </tbody>
+      </table></div>
+    </div>`;
+}
+
+// ---- Laporan ----
+function renderLaporan(){
+  const el=document.getElementById('sec-laporan');
+  const total=allData.length;
+  const neg=allData.filter(d=>d.hasil&&d.hasil.toLowerCase().includes('negatif')).length;
+  const pos=allData.filter(d=>d.hasil&&d.hasil.toLowerCase().includes('positif')).length;
+  const tunggu=total-neg-pos;
+  const rate=afpRate().toFixed(2);
+  const rateOk=Number(rate)>=2;
+  const byCamat=countBy(allData,'kecamatan');
+  const BULAN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+  el.innerHTML=`
+    <div class="panel">
+      <h3>Ringkasan Eksekutif — AFP Kabupaten Kapuas 2026</h3>
+      <p style="font-size:13px;line-height:1.85;color:#333">
+        Kabupaten Kapuas telah melaporkan <strong>${total}</strong> kasus AFP (Acute Flaccid Paralysis / Lumpuh Layu Akut) pada tahun 2026.
+        Dari jumlah tersebut, <strong>${neg}</strong> kasus dinyatakan negatif polio, <strong>${pos}</strong> kasus positif polio,
+        dan <strong>${tunggu}</strong> kasus masih menunggu hasil pemeriksaan laboratorium.<br><br>
+        <strong>Non-Polio AFP Rate</strong> Kabupaten Kapuas saat ini adalah
+        <strong style="color:${rateOk?'#0F6E56':'#854F0B'}">${rate} per 100.000 penduduk usia &lt;15 tahun</strong>
+        (populasi &lt;15 tahun: ${TOTAL_POP().toLocaleString('id-ID')} jiwa).
+        ${rateOk
+          ?'Kabupaten Kapuas <strong>telah memenuhi</strong> target sensitivitas surveilans AFP yang ditetapkan WHO (≥2/100.000).'
+          :'Kabupaten Kapuas <strong>belum memenuhi</strong> target sensitivitas surveilans AFP WHO (≥2/100.000). Diperlukan peningkatan penemuan kasus secara aktif.'}
+      </p>
+    </div>
+
+    <div class="panel">
+      <h3>Rekap per Kecamatan</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Kecamatan</th><th>Total</th><th>Positif</th><th>Negatif</th><th>Tunggu Lab</th><th>Pddk &lt;15 thn</th><th>AFP Rate</th><th>Kinerja Surveilans</th></tr></thead>
+        <tbody>${Object.keys(KECCOORDS).map(k=>{
+          const v=byCamat[k]||0;
+          const kPos=allData.filter(d=>d.kecamatan===k&&d.hasil&&d.hasil.toLowerCase().includes('positif')).length;
+          const kNeg=allData.filter(d=>d.kecamatan===k&&d.hasil&&d.hasil.toLowerCase().includes('negatif')).length;
+          const pop=PENDUDUK[k]||0;
+          const r=pop>0?((v/pop)*100000).toFixed(2):'-';
+          const col=getColor(v);
+          return `<tr><td>${k}</td><td><b>${v}</b></td><td>${kPos}</td><td>${kNeg}</td><td>${v-kPos-kNeg}</td><td>${pop>0?pop.toLocaleString('id-ID'):'-'}</td><td>${r}</td><td><span class="kinerja-dot" style="background:${col}"></span><span style="color:${col};font-size:11px;font-weight:600">${getKinerja(v)}</span></td></tr>`;
+        }).join('')}</tbody>
+      </table></div>
+    </div>
+
+    <div class="panel">
+      <h3>Rekap per Bulan 2026</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Bulan</th><th>Total AFP</th><th>Laki-laki</th><th>Perempuan</th><th>Negatif</th><th>Positif</th><th>Menunggu Lab</th></tr></thead>
+        <tbody>${BULAN.map((bln,i)=>{
+          const kb=allData.filter(d=>{const dt=parseDate(d.tglLumpuh);return dt&&dt.getMonth()===i&&dt.getFullYear()===2026;});
+          const kbNeg=kb.filter(d=>d.hasil&&d.hasil.toLowerCase().includes('negatif')).length;
+          const kbPos=kb.filter(d=>d.hasil&&d.hasil.toLowerCase().includes('positif')).length;
+          return `<tr><td>${bln}</td><td><b>${kb.length}</b></td><td>${kb.filter(d=>d.jk==='L').length}</td><td>${kb.filter(d=>d.jk==='P').length}</td><td>${kbNeg}</td><td>${kbPos}</td><td>${kb.length-kbNeg-kbPos}</td></tr>`;
+        }).join('')}</tbody>
+      </table></div>
+    </div>`;
+}
+
+// ── Admin PIN System ──
+const ADMIN_PIN_KEY = 'afp_admin_pin';
+function getAdminPin(){ return localStorage.getItem(ADMIN_PIN_KEY) || '1234'; }
+let adminUnlocked = false;
+
+function showPinModal(mode){
+  const m = document.getElementById('pin-change-modal');
+  m.dataset.mode = mode;
+  document.getElementById('pin-modal-err').style.display='none';
+  document.getElementById('pin-modal-old').value='';
+  document.getElementById('pin-modal-new').value='';
+  document.getElementById('pin-modal-new2').value='';
+  if(mode==='login'){
+    document.getElementById('pin-modal-title').textContent='🔐 Login Admin';
+    document.getElementById('pin-modal-desc').textContent='Masukkan PIN untuk mengakses pengaturan data penduduk.';
+    document.getElementById('pin-login-fields').style.display='block';
+    document.getElementById('pin-change-fields').style.display='none';
+    document.querySelector('#pin-change-modal .pin-btn').textContent='Masuk';
+  } else {
+    document.getElementById('pin-modal-title').textContent='🔑 Ganti PIN Admin';
+    document.getElementById('pin-modal-desc').textContent='Masukkan PIN lama, lalu PIN baru (min. 4 digit).';
+    document.getElementById('pin-login-fields').style.display='block';
+    document.getElementById('pin-change-fields').style.display='block';
+    document.getElementById('pin-modal-old').placeholder='PIN lama';
+    document.querySelector('#pin-change-modal .pin-btn').textContent='Simpan PIN';
+  }
+  m.classList.add('on');
+  setTimeout(()=>document.getElementById('pin-modal-old').focus(),100);
+}
+function closePinModal(){ document.getElementById('pin-change-modal').classList.remove('on'); }
+
+function submitPinModal(){
+  const mode = document.getElementById('pin-change-modal').dataset.mode;
+  const errEl = document.getElementById('pin-modal-err');
+  errEl.style.display='none';
+  if(mode==='login'){
+    const entered = document.getElementById('pin-modal-old').value.trim();
+    if(entered === getAdminPin()){
+      adminUnlocked = true;
+      closePinModal();
+      renderAdmin();
+    } else {
+      errEl.textContent = '❌ PIN salah. Coba lagi.';
+      errEl.style.display='block';
+      document.getElementById('pin-modal-old').value='';
+    }
+  } else {
+    const oldPin = document.getElementById('pin-modal-old').value.trim();
+    const newPin = document.getElementById('pin-modal-new').value.trim();
+    const newPin2 = document.getElementById('pin-modal-new2').value.trim();
+    if(oldPin !== getAdminPin()){ errEl.textContent='❌ PIN lama salah.'; errEl.style.display='block'; return; }
+    if(newPin.length < 4){ errEl.textContent='❌ PIN baru minimal 4 digit.'; errEl.style.display='block'; return; }
+    if(newPin !== newPin2){ errEl.textContent='❌ Konfirmasi PIN tidak cocok.'; errEl.style.display='block'; return; }
+    localStorage.setItem(ADMIN_PIN_KEY, newPin);
+    closePinModal();
+    alert('✅ PIN berhasil diubah!');
+  }
+}
+
+function lockAdmin(){
+  adminUnlocked = false;
+  renderAdmin();
+}
+
+// ---- Admin / Pengaturan ----
+function renderAdmin(){
+  const el=document.getElementById('sec-admin');
+  const rate = afpRate();
+  const summaryCards = `
+    <div class="panel">
+      <h3>Ringkasan Populasi Saat Ini</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+        <div class="card green"><div class="card-lbl">Total Penduduk &lt;15 thn</div><div class="card-val" id="admin-total-pop">${TOTAL_POP().toLocaleString('id-ID')}</div><div class="card-sub">jiwa · Kab. Kapuas</div></div>
+        <div class="card purple"><div class="card-lbl">Non-Polio AFP Rate</div><div class="card-val" id="admin-cur-rate">${rate.toFixed(2)}</div><div class="card-sub">per 100.000 penduduk &lt;15 thn</div></div>
+        <div class="card ${rate>=2?'green':'amber'}"><div class="card-lbl">Status Target WHO</div><div class="card-val" id="admin-status-val" style="font-size:18px">${rate>=2?'✅ Terpenuhi':'⚠️ Belum'}</div><div class="card-sub">Target ≥2 per 100.000</div></div>
+      </div>
+    </div>`;
+
+  if(!adminUnlocked){
+    el.innerHTML=`
+    <div class="panel" style="max-width:420px;margin:0 auto 16px;">
+      <div style="text-align:center;">
+        <div style="font-size:3rem;margin-bottom:10px;">🔐</div>
+        <h3 style="font-size:16px;font-weight:700;color:#0F6E56;margin-bottom:8px;">Area Admin Terkunci</h3>
+        <p style="font-size:13px;color:#666;margin-bottom:20px;line-height:1.7;">
+          Data penduduk hanya dapat diubah oleh administrator.<br>Masukkan PIN untuk melanjutkan.
+        </p>
+        <button class="save-btn" style="font-size:14px;padding:10px 28px;" onclick="showPinModal('login')">🔓 Masuk sebagai Admin</button>
+        <p style="font-size:11px;color:#aaa;margin-top:16px;">Hubungi administrator jika lupa PIN.</p>
+      </div>
+    </div>
+    ${summaryCards}`;
+    return;
+  }
+
+  el.innerHTML=`
+    <div class="admin-bar">
+      <div class="admin-bar-info"><span>✅ ADMIN</span> Anda masuk sebagai Administrator · Data dapat diedit</div>
+      <div style="display:flex;gap:8px;">
+        <button class="change-pin-btn" onclick="showPinModal('change')">🔑 Ganti PIN</button>
+        <button class="lock-btn" onclick="lockAdmin()">🔒 Kunci Kembali</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>⚙️ Pengaturan Data Dasar Populasi</h3>
+      <p style="font-size:12px;color:#666;margin-bottom:14px;line-height:1.7">
+        Masukkan jumlah penduduk usia &lt;15 tahun per kecamatan (dari BPS/Disdukcapil/Pusdatin) sesuai data terbaru.
+        Data ini digunakan sebagai penyebut dalam perhitungan <strong>Non-Polio AFP Rate per 100.000 penduduk</strong> secara otomatis.
+      </p>
+      <div class="admin-grid">${Object.entries(PENDUDUK).map(([k,v])=>`
+        <div class="pop-item">
+          <label>${k}</label>
+          <input type="number" id="pop_${k.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'X')}" value="${v}" min="0">
+        </div>`).join('')}</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button class="save-btn" onclick="savePendudukAndLock()">💾 Simpan & Kunci</button>
+        <span id="save-msg" style="font-size:12px;color:#0F6E56;display:none;font-weight:600">✅ Tersimpan! AFP Rate diperbarui.</span>
+      </div>
+    </div>
+    ${summaryCards}`;
+}
+
+function savePendudukAndLock(){
+  Object.keys(PENDUDUK).forEach(k=>{
+    const id='pop_'+k.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'X');
+    const inp=document.getElementById(id);
+    if(inp) PENDUDUK[k]=parseInt(inp.value)||0;
+  });
+  // Simpan ke localStorage agar konsisten dengan dashboard & laporan
+  try { localStorage.setItem(AFP_POP_KEY, JSON.stringify(PENDUDUK)); } catch(e){}
+  document.getElementById('hbadge-rate').textContent='AFP Rate: '+afpRate().toFixed(2);
+  // Refresh dashboard jika sedang aktif
+  renderDashboard();
+  adminUnlocked = false;
+  renderAdmin();
+  setTimeout(()=>{ alert('✅ Data penduduk tersimpan. Dashboard dan Laporan telah diperbarui.'); },100);
+}
+
+function savePenduduk(){
+  Object.keys(PENDUDUK).forEach(k=>{
+    const id='pop_'+k.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'X');
+    const inp=document.getElementById(id);
+    if(inp) PENDUDUK[k]=parseInt(inp.value)||0;
+  });
+  document.getElementById('admin-total-pop').textContent=TOTAL_POP().toLocaleString('id-ID');
+  document.getElementById('admin-cur-rate').textContent=afpRate().toFixed(2);
+  document.getElementById('hbadge-rate').textContent='AFP Rate: '+afpRate().toFixed(2);
+  const msg=document.getElementById('save-msg');
+  msg.style.display='inline';
+  setTimeout(()=>msg.style.display='none',3000);
+}
+
+// ---- Export CSV ----
+function exportCSV(){
+  const h=['No','No Epid','Nama','JK','Umur (thn)','Umur (bln)','Kecamatan','Kelurahan','Alamat','Sumber','Tgl Sakit','Tgl Lumpuh','RS','Akut','Layuh','Demam','Bepergian','OPV Rutin','IPV Rutin','OPV PIN/ORI','IPV PIN/ORI','Tgl Ambil Spesimen','Tgl Antar Spesimen','Hasil Lab'];
+  const rows=allData.map((d,i)=>[i+1,d.noEpid,d.nama,d.jk,d.umurThn,d.umurBln,d.kecamatan,d.kelurahan,d.alamat,d.sumber,d.tglSakit,d.tglLumpuh,d.rs,d.akut,d.layuh,d.demam,d.bepergian,d.opvRutin,d.ipvRutin,d.opvPin,d.ipvPin,d.tglAmbil,d.tglAntar,d.hasil]);
+  const csv=[h,...rows].map(r=>r.map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='AFP_Kapuas_2026_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+// ---- Load Data ----
+async function loadData(){
+  document.getElementById('hbadge-time').textContent='Memuat...';
+  try{
+    const res=await fetch(GURL);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const txt=await res.text();
+    const json=JSON.parse(txt.replace(/^[^\(]+\(/,'').replace(/\);\s*$/,''));
+    allData=parseRows(json.table.rows||[]);
+    document.getElementById('hbadge-time').textContent='Update: '+new Date().toLocaleTimeString('id-ID');
+    document.getElementById('hbadge-total').textContent=allData.length+' kasus';
+    document.getElementById('hbadge-rate').textContent='AFP Rate: '+afpRate().toFixed(2);
+    renderDashboard();
+    if(currentSec==='peta') updateMap();
+    if(currentSec==='data') renderData();
+    if(currentSec==='laporan') renderLaporan();
+  }catch(e){
+    document.getElementById('hbadge-time').textContent='❌ Gagal memuat';
+    document.getElementById('sec-dashboard').innerHTML=`
+      <div class="err-screen">
+        <div style="font-size:2rem;margin-bottom:8px">⚠️</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:8px">Gagal memuat data dari Google Sheets</div>
+        <div style="font-size:13px;margin-bottom:16px">${e.message}</div>
+        <div style="font-size:12px;margin-bottom:16px;line-height:1.7;text-align:left;max-width:400px;margin:0 auto 16px">
+          Pastikan:<br>
+          1. Google Sheets sudah diatur <b>Anyone with the link can view</b><br>
+          2. Sheet ID dan GID sudah benar<br>
+          3. Koneksi internet aktif
+        </div>
+        <button onclick="loadData()" style="padding:8px 20px;background:#A32D2D;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px">🔄 Coba Lagi</button>
+      </div>`;
+  }
+}
+
+// Auto-refresh setiap 5 menit
+loadData();
+setInterval(loadData, 5*60*1000);
+</script>
+</body>
+</html>
