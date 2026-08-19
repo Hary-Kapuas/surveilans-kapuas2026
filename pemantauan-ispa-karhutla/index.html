@@ -198,6 +198,19 @@
   }
   .banner strong{display:block; margin-bottom:2px;}
 
+  .warning-banner{
+    background:#fdecea;
+    border:1px solid var(--sangat-tidak-sehat);
+    color:#7a2a1a;
+    padding:10px 12px;
+    border-radius:8px;
+    font-size:0.78rem;
+    margin:12px 0;
+    line-height:1.6;
+  }
+  .warning-banner strong{display:block; margin-bottom:4px;}
+  .warning-banner ul{margin:4px 0 0 18px; padding:0;}
+
   .stat-row{
     display:grid;
     grid-template-columns:repeat(3,1fr);
@@ -281,6 +294,7 @@
         <div class="stat-card"><div class="num" id="statTotalHotspot">0</div><div class="lbl">Hotspot Terdeteksi</div></div>
         <div class="stat-card"><div class="num" id="statKecTerdampak">0</div><div class="lbl">Kecamatan Tidak Sehat+</div></div>
       </div>
+      <div id="missingKecamatanBanner" style="display:none;"></div>
       <table id="recapTable">
         <thead>
           <tr>
@@ -349,6 +363,7 @@
       <p style="font-size:0.78rem;color:var(--muted);margin-top:0;">
         Field bertanda <span style="color:var(--teal);font-weight:600;">⟳ otomatis</span> sudah diisi dari data kecamatan hari ini — silakan cek/koreksi sebelum disimpan. Setelah disimpan, gunakan tombol "Salin sebagai Teks" untuk ditempel ke Google Form resmi Dinkes Provinsi.
       </p>
+      <div id="missingKecamatanBannerProvinsi" style="display:none;"></div>
       <form id="provinsiForm">
         <label>Kabupaten/Kota</label>
         <input type="text" value="KAPUAS" disabled style="background:#eee;">
@@ -677,7 +692,36 @@ async function loadRecap(){
 }
 
 /* ======================================================
-   8. RENDER TABEL, STATISTIK, DAN CHART
+   8a. CEK KECAMATAN YANG BELUM LAPOR HARI INI
+====================================================== */
+function updateMissingKecamatanWarning(){
+  const belumLapor = KECAMATAN.filter(k => kasusHariIni[k.nama] === undefined).map(k => k.nama);
+
+  const bannerRekap = document.getElementById("missingKecamatanBanner");
+  const bannerProvinsi = document.getElementById("missingKecamatanBannerProvinsi");
+
+  if (belumLapor.length === 0){
+    bannerRekap.style.display = "none";
+    bannerProvinsi.style.display = "none";
+    return;
+  }
+
+  const html = `
+    <strong>⚠ ${belumLapor.length} dari 17 kecamatan belum input data ISPA hari ini:</strong>
+    <ul>${belumLapor.map(n => `<li>${n}</li>`).join("")}</ul>
+    <div style="margin-top:6px;">Pastikan sudah dikonfirmasi ke Puskesmas terkait sebelum data dijumlahkan ke laporan provinsi — total saat ini mungkin belum lengkap.</div>
+  `;
+  bannerRekap.innerHTML = html;
+  bannerRekap.className = "warning-banner";
+  bannerRekap.style.display = "block";
+
+  bannerProvinsi.innerHTML = html;
+  bannerProvinsi.className = "warning-banner";
+  bannerProvinsi.style.display = "block";
+}
+
+/* ======================================================
+   9. RENDER TABEL, STATISTIK, DAN CHART
 ====================================================== */
 function renderRecapTable(){
   const tbody = document.querySelector("#recapTable tbody");
@@ -963,6 +1007,7 @@ async function refreshAll(){
   updateMarkers();
   renderRecapTable();
   renderTrendChart();
+  updateMissingKecamatanWarning();
   autoIsiLaporanProvinsi();
 }
 
@@ -973,6 +1018,7 @@ function init(){
   fillKecamatanSelects();
   initMarkers();
   refreshAll();
+  document.getElementById("fTanggal").addEventListener("change", refreshAll);
 }
 init();
 </script>
