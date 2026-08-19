@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pemantauan ISPA & Karhutla — Kabupaten Kapuas</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#12303a;
+    --paper:#f5f2ea;
+    --panel:#ffffff;
+    --line:#d9d2c1;
+    --teal:#0f5c5c;
+    --teal-dark:#0a3f3f;
+    --amber:#c97a2c;
+    --muted:#5b6b6b;
+    --good:#3f8f5f;
+    --sedang:#4f8fbf;
+    --tidak-sehat:#d9a53a;
+    --sangat-tidak-sehat:#c9542f;
+    --berbahaya:#5a1f2b;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI', Roboto, -apple-system, sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  header{
+    background:var(--teal-dark);
+    color:#f5f2ea;
+    padding:18px 24px;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+    border-bottom:4px solid var(--amber);
+  }
+  header .title-block{display:flex; flex-direction:column;}
+  header h1{
+    font-size:1.35rem;
+    margin:0;
+    letter-spacing:0.2px;
+    font-weight:700;
+  }
+  header .subtitle{
+    font-size:0.82rem;
+    color:#c9d9d3;
+    margin-top:2px;
+  }
+  header .meta{
+    font-size:0.78rem;
+    color:#c9d9d3;
+    text-align:right;
+  }
+  header .meta strong{color:#f5f2ea;}
+
+  .layout{
+    display:grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap:18px;
+    padding:18px;
+    max-width:1500px;
+    margin:0 auto;
+  }
+  @media (max-width: 980px){
+    .layout{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:16px;
+  }
+  .panel h2{
+    font-size:0.95rem;
+    text-transform:uppercase;
+    letter-spacing:0.6px;
+    margin:0 0 12px 0;
+    color:var(--teal-dark);
+    border-bottom:2px solid var(--line);
+    padding-bottom:8px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .panel h2 .hint{
+    font-size:0.68rem;
+    text-transform:none;
+    letter-spacing:0;
+    color:var(--muted);
+    font-weight:400;
+  }
+
+  #map{
+    height:460px;
+    border-radius:var(--radius);
+    border:1px solid var(--line);
+  }
+
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:10px;
+    font-size:0.74rem;
+  }
+  .legend span{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+  }
+  .legend i{
+    width:11px;height:11px;border-radius:50%;display:inline-block;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:0.82rem;
+  }
+  th,td{
+    text-align:left;
+    padding:7px 8px;
+    border-bottom:1px solid var(--line);
+  }
+  th{
+    color:var(--muted);
+    font-weight:600;
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+  }
+  .status-pill{
+    display:inline-block;
+    padding:2px 9px;
+    border-radius:20px;
+    font-size:0.7rem;
+    font-weight:600;
+    color:#fff;
+  }
+
+  form label{
+    display:block;
+    font-size:0.75rem;
+    color:var(--muted);
+    margin:10px 0 4px;
+    font-weight:600;
+  }
+  form input, form select, form textarea{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    font-size:0.88rem;
+    font-family:inherit;
+    background:#fbfaf6;
+  }
+  form textarea{resize:vertical; min-height:50px;}
+  .btn{
+    margin-top:14px;
+    background:var(--teal);
+    color:#fff;
+    border:none;
+    padding:10px 18px;
+    border-radius:6px;
+    font-size:0.85rem;
+    font-weight:600;
+    cursor:pointer;
+    letter-spacing:0.2px;
+  }
+  .btn:hover{background:var(--teal-dark);}
+  .btn.secondary{
+    background:transparent;
+    color:var(--teal-dark);
+    border:1px solid var(--teal);
+  }
+  .btn.secondary:hover{background:#e9f2f0;}
+  .btn-row{display:flex; gap:8px; flex-wrap:wrap;}
+
+  .banner{
+    background:#fbf1de;
+    border:1px solid var(--tidak-sehat);
+    color:#5c4415;
+    padding:10px 12px;
+    border-radius:8px;
+    font-size:0.78rem;
+    margin-bottom:14px;
+    line-height:1.5;
+  }
+  .banner strong{display:block; margin-bottom:2px;}
+
+  .stat-row{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-bottom:6px;
+  }
+  .stat-card{
+    background:#fbfaf6;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px;
+    text-align:center;
+  }
+  .stat-card .num{font-size:1.4rem; font-weight:700; color:var(--teal-dark);}
+  .stat-card .lbl{font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.4px;}
+
+  .status-msg{font-size:0.76rem; color:var(--muted); margin-top:8px;}
+  .status-msg.err{color:var(--sangat-tidak-sehat);}
+  .status-msg.ok{color:var(--good);}
+
+  canvas{max-height:220px;}
+
+  footer{
+    text-align:center;
+    font-size:0.72rem;
+    color:var(--muted);
+    padding:20px;
+  }
+
+  .config-toggle{
+    font-size:0.72rem;
+    color:var(--teal);
+    cursor:pointer;
+    text-decoration:underline;
+    background:none;
+    border:none;
+    padding:0;
+  }
+  #configPanel{display:none; margin-top:10px;}
+  #configPanel.open{display:block;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-block">
+    <h1>Pemantauan ISPA &amp; Kondisi Karhutla</h1>
+    <div class="subtitle">Dinas Kesehatan Kabupaten Kapuas — 17 Kecamatan</div>
+  </div>
+  <div class="meta">
+    <div>Tanggal: <strong id="todayLabel">-</strong></div>
+    <div>Sumber hotspot: NASA FIRMS · Estimasi ISPU: model lokal</div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- KOLOM KIRI: PETA + LEGENDA + REKAP -->
+  <div>
+    <div class="panel">
+      <h2>Peta Status per Kecamatan <span class="hint">warna = estimasi kategori ISPU</span></h2>
+      <div id="map"></div>
+      <div class="legend">
+        <span><i style="background:var(--good)"></i> Baik (0–50)</span>
+        <span><i style="background:var(--sedang)"></i> Sedang (51–100)</span>
+        <span><i style="background:var(--tidak-sehat)"></i> Tidak Sehat (101–199)</span>
+        <span><i style="background:var(--sangat-tidak-sehat)"></i> Sangat Tidak Sehat (200–299)</span>
+        <span><i style="background:var(--berbahaya)"></i> Berbahaya (&gt;300)</span>
+        <span><i style="background:#999"></i> Belum ada data</span>
+      </div>
+      <div class="banner">
+        <strong>Catatan penting soal data ISPU</strong>
+        Tidak ada stasiun AQMS resmi KLHK di Kapuas. Nilai ISPU pada peta ini adalah <em>estimasi</em>, dihitung dari jumlah titik panas (hotspot) NASA FIRMS di sekitar tiap kecamatan ditambah nilai dasar PM2.5 regional. Gunakan sebagai indikator dini, bukan pengganti pengukuran resmi.
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Rekap Harian per Kecamatan</h2>
+      <div class="stat-row">
+        <div class="stat-card"><div class="num" id="statTotalKasus">0</div><div class="lbl">Kasus ISPA Hari Ini</div></div>
+        <div class="stat-card"><div class="num" id="statTotalHotspot">0</div><div class="lbl">Hotspot Terdeteksi</div></div>
+        <div class="stat-card"><div class="num" id="statKecTerdampak">0</div><div class="lbl">Kecamatan Tidak Sehat+</div></div>
+      </div>
+      <table id="recapTable">
+        <thead>
+          <tr>
+            <th>Kecamatan</th>
+            <th>Status ISPU (est.)</th>
+            <th>Hotspot 24 jam</th>
+            <th>Kasus ISPA hari ini</th>
+          </tr>
+        </thead>
+        <tbody><!-- diisi oleh JS --></tbody>
+      </table>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn secondary" onclick="refreshAll()">↻ Muat Ulang Data</button>
+        <button class="btn secondary" onclick="exportCSV()">⬇ Ekspor Rekap (CSV)</button>
+      </div>
+      <div id="refreshStatus" class="status-msg"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Tren 14 Hari Terakhir</h2>
+      <canvas id="trendChart"></canvas>
+    </div>
+  </div>
+
+  <!-- KOLOM KANAN: FORM INPUT + KONFIGURASI -->
+  <div>
+    <div class="panel">
+      <h2>Input Kasus ISPA Harian</h2>
+      <form id="ispaForm">
+        <label>Tanggal Laporan</label>
+        <input type="date" id="fTanggal" required>
+
+        <label>Kecamatan</label>
+        <select id="fKecamatan" required></select>
+
+        <label>Puskesmas / Fasyankes Pelapor</label>
+        <input type="text" id="fPuskesmas" placeholder="mis. Puskesmas Selat" required>
+
+        <label>Jumlah Kasus ISPA Baru</label>
+        <input type="number" id="fJumlah" min="0" required>
+
+        <label>Keterangan (opsional)</label>
+        <textarea id="fCatatan" placeholder="mis. dominan usia balita, terkait kabut asap 2 hari terakhir"></textarea>
+
+        <button type="submit" class="btn">Simpan Laporan</button>
+        <div id="formStatus" class="status-msg"></div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Input Manual ISPU (opsional)</h2>
+      <p style="font-size:0.78rem;color:var(--muted);margin-top:0;">
+        Jika Bapak/Ibu punya angka ISPU/AQI lebih akurat dari petugas lapangan atau sumber lain (mis. BMKG terdekat), masukkan di sini untuk menimpa nilai estimasi otomatis kecamatan tersebut.
+      </p>
+      <form id="ispuForm">
+        <label>Kecamatan</label>
+        <select id="mKecamatan" required></select>
+        <label>Nilai ISPU / AQI</label>
+        <input type="number" id="mNilai" min="0" max="500" required>
+        <button type="submit" class="btn secondary">Simpan Nilai Manual</button>
+      </form>
+    </div>
+
+    <div class="panel" id="provinsiPanel">
+      <h2>Laporan Harian ke Provinsi <span class="hint">format Permintaan Laporan Harian Data Kes. Kab/Kota</span></h2>
+      <p style="font-size:0.78rem;color:var(--muted);margin-top:0;">
+        Field bertanda <span style="color:var(--teal);font-weight:600;">⟳ otomatis</span> sudah diisi dari data kecamatan hari ini — silakan cek/koreksi sebelum disimpan. Setelah disimpan, gunakan tombol "Salin sebagai Teks" untuk ditempel ke Google Form resmi Dinkes Provinsi.
+      </p>
+      <form id="provinsiForm">
+        <label>Kabupaten/Kota</label>
+        <input type="text" value="KAPUAS" disabled style="background:#eee;">
+
+        <label>Tanggal Pelaporan</label>
+        <input type="date" id="pTanggal" required>
+
+        <label>Status Siaga Darurat Karhutla</label>
+        <select id="pStatusSiaga" required>
+          <option value="Berlansung">Berlangsung</option>
+          <option value="Selesai">Selesai</option>
+        </select>
+
+        <label>Fasilitas Kesehatan yang Melaporkan Pasien ISPA (boleh lebih dari satu)</label>
+        <div id="pFaskes">
+          <label style="font-weight:400;"><input type="checkbox" value="Rumah Sakit"> Rumah Sakit</label>
+          <label style="font-weight:400;"><input type="checkbox" value="Puskesmas" checked> Puskesmas</label>
+          <label style="font-weight:400;"><input type="checkbox" value="Klinik/Faskes Lain"> Klinik/Faskes Lain</label>
+          <label style="font-weight:400;"><input type="checkbox" value="Posko Kesehatan Karhutla"> Posko Kesehatan Karhutla</label>
+        </div>
+
+        <label>Jumlah Kasus ISPA Baru <span style="color:var(--teal);font-weight:600;">⟳ otomatis</span></label>
+        <input type="number" id="pJumlahIspa" min="0" required>
+
+        <label>Jumlah Pasien Rawat Inap</label>
+        <input type="number" id="pRawatInap" min="0" required>
+
+        <label>Rujukan</label>
+        <select id="pRujukan" required>
+          <option value="Ya">Ya</option>
+          <option value="Tidak" selected>Tidak</option>
+        </select>
+
+        <label>Apakah Sebagian Besar Pasien ISPA Berhubungan dengan Kabut Asap (Karhutla)</label>
+        <select id="pHubunganAsap">
+          <option value="Ya">Ya</option>
+          <option value="Tidak">Tidak</option>
+          <option value="Mungkin" selected>Mungkin</option>
+        </select>
+
+        <label>Apakah Terjadi Peningkatan Kasus ISPA Selama Status Siaga Karhutla</label>
+        <select id="pPeningkatan" required>
+          <option value="Ya">Ya</option>
+          <option value="Tidak" selected>Tidak</option>
+        </select>
+
+        <label>Personel yang Diturunkan Khusus Karhutla (TIMKES/TGC/EMT/PCC)</label>
+        <div id="pPersonel">
+          <label style="font-weight:400;"><input type="checkbox" value="Dokter"> Dokter</label>
+          <label style="font-weight:400;"><input type="checkbox" value="Perawat" checked> Perawat</label>
+          <label style="font-weight:400;"><input type="checkbox" value="Bidan"> Bidan</label>
+          <label style="font-weight:400;"><input type="checkbox" value="Surveilans" checked> Surveilans</label>
+          <label style="font-weight:400;"><input type="checkbox" value="Kesling"> Kesling</label>
+        </div>
+        <input type="text" id="pPersonelLain" placeholder="Personel lain (opsional)" style="margin-top:6px;">
+
+        <label>Jumlah Petugas yang Melaksanakan Pelayanan Kesehatan</label>
+        <input type="number" id="pJumlahPetugas" min="0" required>
+
+        <label>Pelaksanaan Pelayanan Kesehatan Dilaksanakan di Mana Saja</label>
+        <div id="pLokasi">
+          <label style="font-weight:400;"><input type="checkbox" value="Posko Kesehatan/ yg di buat oleh Dinkes"> Posko Kesehatan Dinkes</label>
+          <label style="font-weight:400;"><input type="checkbox" value="Posko terpadu BPBD"> Posko terpadu BPBD</label>
+          <label style="font-weight:400;"><input type="checkbox" value="Puskesmas" checked> Puskesmas</label>
+          <label style="font-weight:400;"><input type="checkbox" value="Pustu"> Pustu</label>
+          <label style="font-weight:400;"><input type="checkbox" value="on call 24 jam"> On call 24 jam</label>
+          <label style="font-weight:400;"><input type="checkbox" value="Mobile (TGC) /PCC"> Mobile (TGC)/PCC</label>
+        </div>
+        <input type="text" id="pLokasiLain" placeholder="Lokasi lain (opsional)" style="margin-top:6px;">
+
+        <label>Kondisi Karhutla</label>
+        <select id="pKondisiKarhutla">
+          <option value="Tidak ada Asap">Tidak ada Asap</option>
+          <option value="Asap Tipis">Asap Tipis</option>
+          <option value="Asap Sedang">Asap Sedang</option>
+          <option value="Asap Pekat">Asap Pekat</option>
+        </select>
+
+        <label>Kualitas Udara (skala AQI) <span style="color:var(--teal);font-weight:600;">⟳ otomatis dari estimasi terburuk kecamatan</span></label>
+        <select id="pKualitasUdara" required>
+          <option value="Baik (AQI 0–50)">Baik (AQI 0–50)</option>
+          <option value="Sedang (AQI 51–100)">Sedang (AQI 51–100)</option>
+          <option value="Tidak Sehat untuk Kelompok Sensitif (AQI 101–150)">Tidak Sehat untuk Kelompok Sensitif (AQI 101–150)</option>
+          <option value="Tidak Sehat (AQI 151–200)">Tidak Sehat (AQI 151–200)</option>
+          <option value="Sangat Tidak Sehat (AQI 201–300)">Sangat Tidak Sehat (AQI 201–300)</option>
+          <option value="Berbahaya (AQI 301+)">Berbahaya (AQI 301+)</option>
+        </select>
+
+        <label>Jumlah Penduduk Terdampak Karhutla (Kab/Kota)</label>
+        <input type="number" id="pPendudukTerdampak" min="0">
+
+        <label>Upaya Pelayanan Kesehatan / Bantuan Logistik yang Dilakukan</label>
+        <textarea id="pUpaya" placeholder="mis. distribusi masker, posko kesehatan keliling, koordinasi dengan BPBD"></textarea>
+
+        <label>Kendala</label>
+        <textarea id="pKendala"></textarea>
+
+        <label>Kebutuhan Dukungan</label>
+        <textarea id="pDukungan"></textarea>
+
+        <label>Nama Pelapor/Penanggung Jawab</label>
+        <input type="text" id="pNamaPelapor">
+
+        <label>Nomor Telp/WA Pelapor</label>
+        <input type="text" id="pTelpPelapor">
+
+        <div class="btn-row">
+          <button type="submit" class="btn">Simpan Laporan Provinsi</button>
+          <button type="button" class="btn secondary" onclick="salinTeksLaporan()">📋 Salin sebagai Teks</button>
+        </div>
+        <div id="provinsiStatus" class="status-msg"></div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <button class="config-toggle" onclick="document.getElementById('configPanel').classList.toggle('open')">⚙ Pengaturan koneksi data (untuk admin)</button>
+      <div id="configPanel">
+        <label>URL Google Apps Script (Web App)</label>
+        <input type="text" id="cfgScriptUrl" placeholder="https://script.google.com/macros/s/XXXX/exec">
+        <p style="font-size:0.72rem;color:var(--muted);">
+          URL ini didapat setelah men-deploy <code>Code.gs</code> (lihat PANDUAN-SETUP.md) sebagai Web App. Backend ini yang menyimpan data ISPA ke Google Sheets dan mengambil data hotspot FIRMS secara aman (MAP_KEY disimpan di server, bukan di file ini).
+        </p>
+        <button class="btn secondary" onclick="saveConfig()">Simpan Pengaturan</button>
+        <div id="cfgStatus" class="status-msg"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Prototipe internal — Tim Kerja Surveilans dan Kekarantinaan Kesehatan, Dinas Kesehatan Kabupaten Kapuas.
+  Data hotspot: NASA FIRMS (VIIRS/MODIS). Estimasi ISPU bersifat indikatif.
+</footer>
+
+<script>
+/* ======================================================
+   1. DATA DASAR 17 KECAMATAN KABUPATEN KAPUAS
+   Koordinat = titik lokasi Puskesmas di kecamatan tsb,
+   diambil dari data GPS presisi (Google Maps) yang sudah
+   diverifikasi Bapak Hary saat membangun aplikasi surveilans
+   PD3I Kabupaten Kapuas sebelumnya. Untuk kecamatan dengan
+   lebih dari satu Puskesmas, dipakai Puskesmas yang berada
+   di ibukota kecamatan.
+====================================================== */
+const KECAMATAN = [
+  { nama: "Selat",            ibukota: "Puskesmas Melati (Selat Tengah)",     lat: -3.016262589576667,  lng: 114.38774517874458 },
+  { nama: "Kapuas Kuala",     ibukota: "Puskesmas Lupak (Lupak Dalam)",       lat: -3.282907440534958,  lng: 114.31061316340427 },
+  { nama: "Tamban Catur",     ibukota: "Puskesmas Tamban Catur (Warnasari)",  lat: -3.1849041949624373, lng: 114.37301407719917 },
+  { nama: "Kapuas Timur",     ibukota: "Puskesmas Anjir Serapat",             lat: -3.082264816992371,  lng: 114.44391325175948 },
+  { nama: "Bataguh",          ibukota: "Puskesmas Pulau Kupang (Sei Lunuk)",  lat: -3.0691117086430753, lng: 114.36714439223785 },
+  { nama: "Basarang",         ibukota: "Puskesmas Basarang (Tambun Raya)",    lat: -2.9517050786815475, lng: 114.30514647705351 },
+  { nama: "Kapuas Hilir",     ibukota: "Puskesmas Barimba",                   lat: -3.009001744950812,  lng: 114.4091764083167 },
+  { nama: "Pulau Petak",      ibukota: "Puskesmas Sei Tatas",                 lat: -2.9050128359238583, lng: 114.48926368059345 },
+  { nama: "Kapuas Murung",    ibukota: "Puskesmas Palingkau (Palingkau Baru)",lat: -2.8443945379370317, lng: 114.51901712107149 },
+  { nama: "Dadahup",          ibukota: "Puskesmas Dadahup",                   lat: -2.657557947618682,  lng: 114.60079427874119 },
+  { nama: "Kapuas Barat",     ibukota: "Puskesmas Mandomai",                  lat: -2.8202330436952314, lng: 114.35338522107135 },
+  { nama: "Mantangai",        ibukota: "Puskesmas Mantangai (Mantangai Hilir)",lat: -2.5120165269517845,lng: 114.49372029408275 },
+  { nama: "Timpah",           ibukota: "Puskesmas Timpah",                    lat: -1.7203323702649955, lng: 114.47940519407648 },
+  { nama: "Kapuas Tengah",    ibukota: "Puskesmas Pujon",                     lat: -1.348785433095912,  lng: 114.3672342364024 },
+  { nama: "Pasak Talawang",   ibukota: "Puskesmas Jangkang",                  lat: -1.1585436458994687, lng: 114.19835472290838 },
+  { nama: "Kapuas Hulu",      ibukota: "Puskesmas Sei Hanyo",                 lat: -0.9316171781177287, lng: 114.02278356523557 },
+  { nama: "Mandau Talawang",  ibukota: "Puskesmas Sei Pinang",                lat: -0.78047852591554,   lng: 114.05142657872754 },
+];
+
+// Radius (km) untuk menghitung hotspot "di sekitar" tiap kecamatan
+const RADIUS_KM = 15;
+
+// Nilai dasar PM2.5/ISPU regional (bisa disesuaikan manual tiap hari
+// berdasarkan pembacaan BMKG Palangka Raya terdekat, sebagai konteks umum)
+let baselineISPU = 40;
+
+/* ======================================================
+   2. KONFIGURASI KONEKSI BACKEND
+====================================================== */
+let SCRIPT_URL = localStorage.getItem("ispa_kapuas_script_url") || "";
+document.getElementById("cfgScriptUrl").value = SCRIPT_URL;
+
+function saveConfig(){
+  SCRIPT_URL = document.getElementById("cfgScriptUrl").value.trim();
+  localStorage.setItem("ispa_kapuas_script_url", SCRIPT_URL);
+  document.getElementById("cfgStatus").textContent = "Pengaturan disimpan.";
+  document.getElementById("cfgStatus").className = "status-msg ok";
+  refreshAll();
+}
+
+/* ======================================================
+   3. STATE APLIKASI
+====================================================== */
+let hotspotCounts = {};   // { "Selat": 3, ... }
+let manualISPU = {};      // { "Selat": 120, ... } input manual (opsional, override)
+let kasusHariIni = {};    // { "Selat": 5, ... }
+let trendData = {};       // { "2026-08-13": {kasus: 10, hotspot: 4}, ... }
+let markers = {};
+
+/* ======================================================
+   4. PETA
+====================================================== */
+const map = L.map('map').setView([-2.0, 114.3], 7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors',
+  maxZoom: 13
+}).addTo(map);
+
+function statusFromScore(score){
+  if (score === null || score === undefined) return { label: "Belum ada data", color: "#999" };
+  if (score <= 50)  return { label: "Baik", color: "var(--good)".replace('var(--good)', '#3f8f5f') };
+  if (score <= 100) return { label: "Sedang", color: "#4f8fbf" };
+  if (score <= 199) return { label: "Tidak Sehat", color: "#d9a53a" };
+  if (score <= 299) return { label: "Sangat Tidak Sehat", color: "#c9542f" };
+  return { label: "Berbahaya", color: "#5a1f2b" };
+}
+
+function computeScore(namaKec){
+  if (manualISPU[namaKec] !== undefined) return manualISPU[namaKec];
+  const hs = hotspotCounts[namaKec];
+  if (hs === undefined) return null;
+  let addOn = 0;
+  if (hs >= 1 && hs <= 3) addOn = 20;
+  else if (hs >= 4 && hs <= 10) addOn = 50;
+  else if (hs > 10) addOn = 100;
+  return baselineISPU + addOn;
+}
+
+function initMarkers(){
+  KECAMATAN.forEach(k => {
+    const marker = L.circleMarker([k.lat, k.lng], {
+      radius: 11,
+      fillColor: "#999",
+      color: "#fff",
+      weight: 1.5,
+      fillOpacity: 0.9
+    }).addTo(map);
+    marker.bindTooltip(`${k.nama} (${k.ibukota})`, {permanent:false});
+    markers[k.nama] = marker;
+  });
+}
+
+function updateMarkers(){
+  KECAMATAN.forEach(k => {
+    const score = computeScore(k.nama);
+    const st = statusFromScore(score);
+    markers[k.nama].setStyle({ fillColor: st.color });
+    const hs = hotspotCounts[k.nama] ?? "-";
+    const kasus = kasusHariIni[k.nama] ?? 0;
+    markers[k.nama].bindPopup(
+      `<strong>${k.nama}</strong><br>Status: ${st.label}${manualISPU[k.nama] !== undefined ? " (manual)" : " (estimasi)"}<br>Hotspot 24 jam: ${hs}<br>Kasus ISPA hari ini: ${kasus}`
+    );
+  });
+}
+
+/* ======================================================
+   5. ISI DROPDOWN KECAMATAN
+====================================================== */
+function fillKecamatanSelects(){
+  const selects = [document.getElementById("fKecamatan"), document.getElementById("mKecamatan")];
+  selects.forEach(sel => {
+    sel.innerHTML = "";
+    KECAMATAN.forEach(k => {
+      const opt = document.createElement("option");
+      opt.value = k.nama;
+      opt.textContent = k.nama;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+/* ======================================================
+   6. AMBIL DATA HOTSPOT (via backend proxy, hindari CORS
+      & menjaga MAP_KEY tetap rahasia di server)
+====================================================== */
+async function loadHotspots(){
+  hotspotCounts = {};
+  if (!SCRIPT_URL){
+    setStatus("refreshStatus", "Belum ada URL backend — data hotspot tidak dimuat. Isi di 'Pengaturan koneksi data'.", "err");
+    return;
+  }
+  try{
+    const res = await fetch(`${SCRIPT_URL}?action=hotspot`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    // data.points = [{lat, lng}, ...] dari FIRMS 24-48 jam terakhir
+    KECAMATAN.forEach(k => {
+      const count = data.points.filter(p => haversine(k.lat, k.lng, p.lat, p.lng) <= RADIUS_KM).length;
+      hotspotCounts[k.nama] = count;
+    });
+    setStatus("refreshStatus", `Data hotspot dimuat: ${data.points.length} titik panas (${data.window || '24-48 jam terakhir'}).`, "ok");
+  } catch(err){
+    setStatus("refreshStatus", "Gagal memuat data hotspot: " + err.message, "err");
+  }
+}
+
+function haversine(lat1, lon1, lat2, lon2){
+  const R = 6371;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLon = (lon2-lon1) * Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+/* ======================================================
+   7. AMBIL REKAP KASUS ISPA DARI GOOGLE SHEETS
+====================================================== */
+async function loadRecap(){
+  kasusHariIni = {};
+  trendData = {};
+  if (!SCRIPT_URL) return;
+  try{
+    const res = await fetch(`${SCRIPT_URL}?action=recap`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const today = document.getElementById("fTanggal").value;
+    (data.records || []).forEach(r => {
+      if (r.tanggal === today){
+        kasusHariIni[r.kecamatan] = (kasusHariIni[r.kecamatan] || 0) + Number(r.jumlah || 0);
+      }
+      if (!trendData[r.tanggal]) trendData[r.tanggal] = { kasus: 0 };
+      trendData[r.tanggal].kasus += Number(r.jumlah || 0);
+    });
+    (data.manual_ispu || []).forEach(m => {
+      manualISPU[m.kecamatan] = Number(m.nilai);
+    });
+  } catch(err){
+    setStatus("refreshStatus", "Gagal memuat rekap ISPA: " + err.message, "err");
+  }
+}
+
+/* ======================================================
+   8. RENDER TABEL, STATISTIK, DAN CHART
+====================================================== */
+function renderRecapTable(){
+  const tbody = document.querySelector("#recapTable tbody");
+  tbody.innerHTML = "";
+  let totalKasus = 0, totalHotspot = 0, kecTerdampak = 0;
+
+  KECAMATAN.forEach(k => {
+    const score = computeScore(k.nama);
+    const st = statusFromScore(score);
+    const hs = hotspotCounts[k.nama] ?? "-";
+    const kasus = kasusHariIni[k.nama] ?? 0;
+    totalKasus += kasus;
+    if (typeof hs === "number") totalHotspot += hs;
+    if (score !== null && score > 100) kecTerdampak++;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${k.nama}</td>
+      <td><span class="status-pill" style="background:${st.color}">${st.label}</span></td>
+      <td>${hs}</td>
+      <td>${kasus}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("statTotalKasus").textContent = totalKasus;
+  document.getElementById("statTotalHotspot").textContent = totalHotspot;
+  document.getElementById("statKecTerdampak").textContent = kecTerdampak;
+}
+
+let trendChart;
+function renderTrendChart(){
+  const days = [];
+  const today = new Date();
+  for (let i = 13; i >= 0; i--){
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  const kasusSeries = days.map(d => trendData[d]?.kasus ?? 0);
+
+  const ctx = document.getElementById("trendChart");
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: days.map(d => d.slice(5)),
+      datasets: [{
+        label: 'Total Kasus ISPA / hari',
+        data: kasusSeries,
+        borderColor: '#0f5c5c',
+        backgroundColor: 'rgba(15,92,92,0.12)',
+        fill: true,
+        tension: 0.25
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+}
+
+/* ======================================================
+   9. FORM SUBMIT: KASUS ISPA
+====================================================== */
+document.getElementById("ispaForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!SCRIPT_URL){
+    setStatus("formStatus", "Isi dulu URL backend di 'Pengaturan koneksi data'.", "err");
+    return;
+  }
+  const payload = {
+    action: "simpan_ispa",
+    tanggal: document.getElementById("fTanggal").value,
+    kecamatan: document.getElementById("fKecamatan").value,
+    puskesmas: document.getElementById("fPuskesmas").value,
+    jumlah: document.getElementById("fJumlah").value,
+    catatan: document.getElementById("fCatatan").value
+  };
+  try{
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: {"Content-Type": "text/plain"},
+      body: JSON.stringify(payload)
+    });
+    setStatus("formStatus", "Laporan tersimpan.", "ok");
+    document.getElementById("fJumlah").value = "";
+    document.getElementById("fCatatan").value = "";
+    await refreshAll();
+  } catch(err){
+    setStatus("formStatus", "Gagal menyimpan: " + err.message, "err");
+  }
+});
+
+/* ======================================================
+   10. FORM SUBMIT: NILAI ISPU MANUAL
+====================================================== */
+document.getElementById("ispuForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const kec = document.getElementById("mKecamatan").value;
+  const nilai = Number(document.getElementById("mNilai").value);
+  manualISPU[kec] = nilai;
+  updateMarkers();
+  renderRecapTable();
+  if (SCRIPT_URL){
+    try{
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: {"Content-Type": "text/plain"},
+        body: JSON.stringify({ action: "simpan_ispu_manual", kecamatan: kec, nilai })
+      });
+    } catch(err){ /* diam-diam gagal, data tetap tersimpan di sesi ini */ }
+  }
+});
+
+/* ======================================================
+   11a. LAPORAN HARIAN FORMAT PROVINSI
+====================================================== */
+
+// Peta status ISPU internal -> kategori AQI seperti dipakai form provinsi
+function aqiCategoryFromScore(score){
+  if (score === null || score === undefined) return "Baik (AQI 0–50)";
+  if (score <= 50) return "Baik (AQI 0–50)";
+  if (score <= 100) return "Sedang (AQI 51–100)";
+  if (score <= 150) return "Tidak Sehat untuk Kelompok Sensitif (AQI 101–150)";
+  if (score <= 200) return "Tidak Sehat (AQI 151–200)";
+  if (score <= 300) return "Sangat Tidak Sehat (AQI 201–300)";
+  return "Berbahaya (AQI 301+)";
+}
+
+function autoIsiLaporanProvinsi(){
+  document.getElementById("pTanggal").value = document.getElementById("fTanggal").value;
+
+  // Jumlah kasus ISPA baru = total kasus hari ini dari semua kecamatan
+  const totalKasus = Object.values(kasusHariIni).reduce((a,b) => a+b, 0);
+  document.getElementById("pJumlahIspa").value = totalKasus;
+
+  // Kualitas udara = kondisi TERBURUK di antara 17 kecamatan (prinsip kehati-hatian)
+  let worstScore = null;
+  KECAMATAN.forEach(k => {
+    const s = computeScore(k.nama);
+    if (s !== null && (worstScore === null || s > worstScore)) worstScore = s;
+  });
+  document.getElementById("pKualitasUdara").value = aqiCategoryFromScore(worstScore);
+
+  // Kondisi karhutla (kualitatif) mengikuti total hotspot terdeteksi
+  const totalHotspot = Object.values(hotspotCounts).reduce((a,b) => a+b, 0);
+  const kondisiSel = document.getElementById("pKondisiKarhutla");
+  if (totalHotspot === 0) kondisiSel.value = "Tidak ada Asap";
+  else if (totalHotspot <= 5) kondisiSel.value = "Asap Tipis";
+  else if (totalHotspot <= 20) kondisiSel.value = "Asap Sedang";
+  else kondisiSel.value = "Asap Pekat";
+
+  // Peningkatan kasus ISPA: bandingkan kasus hari ini vs rata-rata 7 hari sebelumnya
+  const days = Object.keys(trendData).sort();
+  const prevDays = days.filter(d => d < document.getElementById("fTanggal").value).slice(-7);
+  const avgPrev = prevDays.length ? prevDays.reduce((a,d)=>a+(trendData[d]?.kasus||0),0)/prevDays.length : 0;
+  document.getElementById("pPeningkatan").value = totalKasus > avgPrev ? "Ya" : "Tidak";
+}
+
+function getChecked(containerId){
+  return [...document.querySelectorAll(`#${containerId} input[type=checkbox]:checked`)].map(el => el.value);
+}
+
+function kumpulkanLaporanProvinsi(){
+  const faskes = getChecked("pFaskes");
+  const personel = getChecked("pPersonel");
+  const personelLain = document.getElementById("pPersonelLain").value.trim();
+  if (personelLain) personel.push(personelLain);
+  const lokasi = getChecked("pLokasi");
+  const lokasiLain = document.getElementById("pLokasiLain").value.trim();
+  if (lokasiLain) lokasi.push(lokasiLain);
+
+  return {
+    kabupaten: "KAPUAS",
+    tanggal: document.getElementById("pTanggal").value,
+    status_siaga: document.getElementById("pStatusSiaga").value,
+    faskes_pelapor: faskes.join("; "),
+    jumlah_kasus_ispa: document.getElementById("pJumlahIspa").value,
+    jumlah_rawat_inap: document.getElementById("pRawatInap").value,
+    rujukan: document.getElementById("pRujukan").value,
+    hubungan_asap: document.getElementById("pHubunganAsap").value,
+    peningkatan_kasus: document.getElementById("pPeningkatan").value,
+    personel: personel.join("; "),
+    jumlah_petugas: document.getElementById("pJumlahPetugas").value,
+    lokasi_pelayanan: lokasi.join("; "),
+    kondisi_karhutla: document.getElementById("pKondisiKarhutla").value,
+    kualitas_udara: document.getElementById("pKualitasUdara").value,
+    penduduk_terdampak: document.getElementById("pPendudukTerdampak").value,
+    upaya: document.getElementById("pUpaya").value,
+    kendala: document.getElementById("pKendala").value,
+    dukungan: document.getElementById("pDukungan").value,
+    nama_pelapor: document.getElementById("pNamaPelapor").value,
+    telp_pelapor: document.getElementById("pTelpPelapor").value
+  };
+}
+
+document.getElementById("provinsiForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const payload = kumpulkanLaporanProvinsi();
+  payload.action = "simpan_laporan_provinsi";
+  if (!SCRIPT_URL){
+    setStatus("provinsiStatus", "Isi dulu URL backend di 'Pengaturan koneksi data'. Data tetap bisa disalin sebagai teks di bawah.", "err");
+    return;
+  }
+  try{
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: {"Content-Type": "text/plain"},
+      body: JSON.stringify(payload)
+    });
+    setStatus("provinsiStatus", "Laporan provinsi tersimpan. Silakan klik 'Salin sebagai Teks' untuk ditempel ke Google Form resmi.", "ok");
+  } catch(err){
+    setStatus("provinsiStatus", "Gagal menyimpan: " + err.message, "err");
+  }
+});
+
+function salinTeksLaporan(){
+  const d = kumpulkanLaporanProvinsi();
+  const teks =
+`Kabupaten/Kota: ${d.kabupaten}
+Tanggal Pelaporan: ${d.tanggal}
+Status Siaga Darurat Karhutla: ${d.status_siaga}
+Fasilitas Kesehatan yang Melaporkan: ${d.faskes_pelapor || "-"}
+Jumlah Kasus ISPA Baru: ${d.jumlah_kasus_ispa}
+Jumlah Pasien Rawat Inap: ${d.jumlah_rawat_inap}
+Rujukan: ${d.rujukan}
+Sebagian Besar Pasien ISPA Berhubungan dengan Kabut Asap: ${d.hubungan_asap}
+Peningkatan Kasus ISPA Selama Status Siaga: ${d.peningkatan_kasus}
+Personel yang Diturunkan: ${d.personel || "-"}
+Jumlah Petugas yang Melaksanakan Pelayanan: ${d.jumlah_petugas}
+Lokasi Pelaksanaan Pelayanan: ${d.lokasi_pelayanan || "-"}
+Kondisi Karhutla: ${d.kondisi_karhutla}
+Kualitas Udara: ${d.kualitas_udara}
+Jumlah Penduduk Terdampak Karhutla: ${d.penduduk_terdampak || "-"}
+Upaya Pelayanan Kesehatan/Bantuan Logistik: ${d.upaya || "-"}
+Kendala: ${d.kendala || "-"}
+Kebutuhan Dukungan: ${d.dukungan || "-"}
+Nama Pelapor/Penanggung Jawab: ${d.nama_pelapor || "-"}
+Nomor Telp/WA Pelapor: ${d.telp_pelapor || "-"}`;
+
+  navigator.clipboard.writeText(teks).then(() => {
+    setStatus("provinsiStatus", "Teks laporan tersalin — tinggal tempel ke Google Form resmi Dinkes Provinsi.", "ok");
+  }).catch(() => {
+    setStatus("provinsiStatus", "Gagal menyalin otomatis. Berikut teksnya, silakan salin manual:\n\n" + teks, "err");
+  });
+}
+
+/* ======================================================
+   11. EKSPOR CSV
+====================================================== */
+function exportCSV(){
+  let csv = "Kecamatan,Status ISPU (estimasi),Hotspot 24 jam,Kasus ISPA hari ini\n";
+  KECAMATAN.forEach(k => {
+    const score = computeScore(k.nama);
+    const st = statusFromScore(score);
+    const hs = hotspotCounts[k.nama] ?? "";
+    const kasus = kasusHariIni[k.nama] ?? 0;
+    csv += `${k.nama},${st.label},${hs},${kasus}\n`;
+  });
+  const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `rekap-ispa-karhutla-kapuas-${document.getElementById("fTanggal").value}.csv`;
+  a.click();
+}
+
+/* ======================================================
+   12. UTIL & INIT
+====================================================== */
+function setStatus(id, msg, type){
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = "status-msg " + (type || "");
+}
+
+async function refreshAll(){
+  setStatus("refreshStatus", "Memuat data...", "");
+  await Promise.all([loadHotspots(), loadRecap()]);
+  updateMarkers();
+  renderRecapTable();
+  renderTrendChart();
+  autoIsiLaporanProvinsi();
+}
+
+function init(){
+  const todayStr = new Date().toISOString().slice(0,10);
+  document.getElementById("fTanggal").value = todayStr;
+  document.getElementById("todayLabel").textContent = new Date().toLocaleDateString('id-ID', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  fillKecamatanSelects();
+  initMarkers();
+  refreshAll();
+}
+init();
+</script>
+</body>
+</html>
