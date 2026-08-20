@@ -314,12 +314,71 @@
     </div>
 
     <div class="panel">
-      <h2>Tren 14 Hari Terakhir</h2>
+      <h2>Tren &amp; Rekap Kasus ISPA</h2>
+
+      <label style="font-size:0.75rem; color:var(--muted); font-weight:600; display:block; margin-bottom:6px;">Rentang tanggal:</label>
+      <div class="btn-row" style="margin-bottom:8px;">
+        <button type="button" class="btn secondary" onclick="setRentangPreset(7)">7 hari terakhir</button>
+        <button type="button" class="btn secondary" onclick="setRentangPreset(14)">14 hari terakhir</button>
+        <button type="button" class="btn secondary" onclick="setRentangPreset(30)">30 hari terakhir</button>
+      </div>
+      <div style="display:flex; gap:8px; margin-bottom:10px;">
+        <div style="flex:1;">
+          <label style="font-size:0.72rem;">Dari tanggal</label>
+          <input type="date" id="trendDari" style="padding:7px 9px; border:1px solid var(--line); border-radius:6px; font-size:0.85rem; width:100%; background:#fbfaf6;">
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:0.72rem;">Sampai tanggal</label>
+          <input type="date" id="trendSampai" style="padding:7px 9px; border:1px solid var(--line); border-radius:6px; font-size:0.85rem; width:100%; background:#fbfaf6;">
+        </div>
+      </div>
+
+      <label style="font-size:0.75rem; color:var(--muted); font-weight:600; display:block; margin-bottom:6px;">Tren untuk kecamatan:</label>
+      <select id="trendKecFilter" style="width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:6px; font-size:0.85rem; margin-bottom:10px; background:#fbfaf6;">
+        <option value="ALL">Semua Kecamatan (Total)</option>
+      </select>
       <canvas id="trendChart"></canvas>
+
+      <div style="margin-top:22px; border-top:1px solid var(--line); padding-top:16px;">
+        <label style="font-size:0.75rem; color:var(--muted); font-weight:600; display:block; margin-bottom:8px;">Total Kasus ISPA per Kecamatan (rentang tanggal di atas):</label>
+        <canvas id="kecamatanBarChart"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Rekap Per Periode <span class="hint">mis. untuk laporan 3-harian BPBD</span></h2>
+      <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:140px;">
+          <label style="font-size:0.72rem;">Tanggal mulai periode</label>
+          <input type="date" id="periodeMulai" style="padding:7px 9px; border:1px solid var(--line); border-radius:6px; font-size:0.85rem; width:100%; background:#fbfaf6;">
+        </div>
+        <div style="width:110px;">
+          <label style="font-size:0.72rem;">Panjang (hari)</label>
+          <input type="number" id="periodePanjang" value="3" min="1" max="30" style="padding:7px 9px; border:1px solid var(--line); border-radius:6px; font-size:0.85rem; width:100%; background:#fbfaf6;">
+        </div>
+        <div style="width:140px;">
+          <label style="font-size:0.72rem;">Tampilkan per</label>
+          <select id="periodeLevel" style="padding:7px 9px; border:1px solid var(--line); border-radius:6px; font-size:0.85rem; width:100%; background:#fbfaf6;">
+            <option value="kecamatan">Kecamatan</option>
+            <option value="puskesmas">Puskesmas</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-row" style="margin-bottom:12px;">
+        <button type="button" class="btn secondary" onclick="renderRekapPeriode()">↻ Tampilkan Rekap</button>
+        <button type="button" class="btn secondary" onclick="exportRekapPeriodeCSV()">⬇ Ekspor CSV</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="rekapPeriodeTable">
+          <thead><tr id="rekapPeriodeHead"></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
   <!-- KOLOM KANAN: FORM INPUT + KONFIGURASI -->
+
   <div>
     <div class="panel">
       <h2>Input Kasus ISPA Harian</h2>
@@ -331,10 +390,27 @@
         <select id="fKecamatan" required></select>
 
         <label>Puskesmas / Fasyankes Pelapor</label>
-        <input type="text" id="fPuskesmas" placeholder="mis. Puskesmas Selat" required>
+        <select id="fPuskesmas" required></select>
 
         <label>Jumlah Kasus ISPA Baru</label>
         <input type="number" id="fJumlah" min="0" required>
+
+        <label>Jumlah Pasien Rawat Inap</label>
+        <input type="number" id="fRawatInap" min="0" value="0" required>
+
+        <label>Pasien Dirujuk</label>
+        <select id="fDirujuk">
+          <option value="Tidak" selected>Tidak</option>
+          <option value="Ya">Ya</option>
+        </select>
+
+        <label>Kondisi Karhutla (di wilayah ini)</label>
+        <select id="fKondisiKarhutla">
+          <option value="Tidak Ada Asap" selected>Tidak Ada Asap</option>
+          <option value="Asap Tipis">Asap Tipis</option>
+          <option value="Asap Sedang">Asap Sedang</option>
+          <option value="Asap Pekat">Asap Pekat</option>
+        </select>
 
         <label>Keterangan (opsional)</label>
         <textarea id="fCatatan" placeholder="mis. dominan usia balita, terkait kabut asap 2 hari terakhir"></textarea>
@@ -359,7 +435,7 @@
     </div>
 
     <div class="panel" id="provinsiPanel">
-      <h2>Laporan Harian ke Provinsi <span class="hint">format Permintaan Laporan Harian Data Kes. Kab/Kota</span></h2>
+      <h2>Laporan Harian <span class="hint">format Permintaan Laporan Harian Data Kes. Kab/Kota</span></h2>
       <p style="font-size:0.78rem;color:var(--muted);margin-top:0;">
         Field bertanda <span style="color:var(--teal);font-weight:600;">⟳ otomatis</span> sudah diisi dari data kecamatan hari ini — silakan cek/koreksi sebelum disimpan. Setelah disimpan, gunakan tombol "Salin sebagai Teks" untuk ditempel ke Google Form resmi Dinkes Provinsi.
       </p>
@@ -532,6 +608,42 @@ const KECAMATAN = [
 // Radius (km) untuk menghitung hotspot "di sekitar" tiap kecamatan
 const RADIUS_KM = 15;
 
+/* ======================================================
+   1a. DAFTAR 26 PUSKESMAS + 1 RSUD KABUPATEN KAPUAS
+   Dipetakan ke kecamatan masing-masing. Beberapa kecamatan
+   punya lebih dari satu Puskesmas (Selat, Bataguh, Tamban
+   Catur, Kapuas Murung, Dadahup, Mantangai).
+====================================================== */
+const PUSKESMAS = [
+  { nama: "Puskesmas Selat",              kecamatan: "Selat" },
+  { nama: "Puskesmas Melati",             kecamatan: "Selat" },
+  { nama: "Puskesmas Pulau Telo",         kecamatan: "Selat" },
+  { nama: "Puskesmas Panamas",            kecamatan: "Selat" },
+  { nama: "RSUD dr. H. Soemarno Sosroatmodjo Kuala Kapuas", kecamatan: "Selat" },
+  { nama: "Puskesmas Lupak",              kecamatan: "Kapuas Kuala" },
+  { nama: "Puskesmas Tamban Catur",       kecamatan: "Tamban Catur" },
+  { nama: "Puskesmas Tamban Baru",        kecamatan: "Tamban Catur" },
+  { nama: "Puskesmas Anjir Serapat",      kecamatan: "Kapuas Timur" },
+  { nama: "Puskesmas Pulau Kupang",       kecamatan: "Bataguh" },
+  { nama: "Puskesmas Terusan Tengah",     kecamatan: "Bataguh" },
+  { nama: "Puskesmas Basarang",           kecamatan: "Basarang" },
+  { nama: "Puskesmas Barimba",            kecamatan: "Kapuas Hilir" },
+  { nama: "Puskesmas Sei Tatas",          kecamatan: "Pulau Petak" },
+  { nama: "Puskesmas Palingkau",          kecamatan: "Kapuas Murung" },
+  { nama: "Puskesmas Palangkau",          kecamatan: "Kapuas Murung" },
+  { nama: "Puskesmas Dadahup",            kecamatan: "Dadahup" },
+  { nama: "Puskesmas Talekung Punei",     kecamatan: "Dadahup" },
+  { nama: "Puskesmas Mandomai",           kecamatan: "Kapuas Barat" },
+  { nama: "Puskesmas Lamunti",            kecamatan: "Mantangai" },
+  { nama: "Puskesmas Mantangai",          kecamatan: "Mantangai" },
+  { nama: "Puskesmas Danau Rawah",        kecamatan: "Mantangai" },
+  { nama: "Puskesmas Timpah",             kecamatan: "Timpah" },
+  { nama: "Puskesmas Pujon",              kecamatan: "Kapuas Tengah" },
+  { nama: "Puskesmas Jangkang",           kecamatan: "Pasak Talawang" },
+  { nama: "Puskesmas Sei Hanyo",          kecamatan: "Kapuas Hulu" },
+  { nama: "Puskesmas Sei Pinang",         kecamatan: "Mandau Talawang" },
+];
+
 // Nilai dasar PM2.5/ISPU regional (bisa disesuaikan manual tiap hari
 // berdasarkan pembacaan BMKG Palangka Raya terdekat, sebagai konteks umum)
 let baselineISPU = 40;
@@ -555,8 +667,9 @@ function saveConfig(){
 ====================================================== */
 let hotspotCounts = {};   // { "Selat": 3, ... }
 let manualISPU = {};      // { "Selat": 120, ... } input manual (opsional, override)
-let kasusHariIni = {};    // { "Selat": 5, ... }
-let trendData = {};       // { "2026-08-13": {kasus: 10, hotspot: 4}, ... }
+let kasusHariIni = {};    // { "Selat": 5, ... } total per kecamatan hari ini
+let laporanPuskesmasHariIni = {}; // { "Puskesmas Selat": 3, ... } per puskesmas hari ini
+let allRecords = [];      // seluruh record ISPA dari backend (bukan cuma hari ini)
 let markers = {};
 
 /* ======================================================
@@ -629,7 +742,31 @@ function fillKecamatanSelects(){
       sel.appendChild(opt);
     });
   });
+
+  const trendSel = document.getElementById("trendKecFilter");
+  KECAMATAN.forEach(k => {
+    const opt = document.createElement("option");
+    opt.value = k.nama;
+    opt.textContent = k.nama;
+    trendSel.appendChild(opt);
+  });
+  trendSel.addEventListener("change", renderTrendChart);
 }
+
+function fillPuskesmasSelect(kecamatanNama){
+  const sel = document.getElementById("fPuskesmas");
+  sel.innerHTML = "";
+  PUSKESMAS.filter(p => p.kecamatan === kecamatanNama).forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p.nama;
+    opt.textContent = p.nama;
+    sel.appendChild(opt);
+  });
+}
+
+document.getElementById("fKecamatan").addEventListener("change", (e) => {
+  fillPuskesmasSelect(e.target.value);
+});
 
 /* ======================================================
    6. AMBIL DATA HOTSPOT (via backend proxy, hindari CORS
@@ -668,21 +805,14 @@ function haversine(lat1, lon1, lat2, lon2){
    7. AMBIL REKAP KASUS ISPA DARI GOOGLE SHEETS
 ====================================================== */
 async function loadRecap(){
-  kasusHariIni = {};
-  trendData = {};
+  allRecords = [];
+  manualISPU = {};
   if (!SCRIPT_URL) return;
   try{
     const res = await fetch(`${SCRIPT_URL}?action=recap`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    const today = document.getElementById("fTanggal").value;
-    (data.records || []).forEach(r => {
-      if (r.tanggal === today){
-        kasusHariIni[r.kecamatan] = (kasusHariIni[r.kecamatan] || 0) + Number(r.jumlah || 0);
-      }
-      if (!trendData[r.tanggal]) trendData[r.tanggal] = { kasus: 0 };
-      trendData[r.tanggal].kasus += Number(r.jumlah || 0);
-    });
+    allRecords = data.records || [];
     (data.manual_ispu || []).forEach(m => {
       manualISPU[m.kecamatan] = Number(m.nilai);
     });
@@ -691,26 +821,86 @@ async function loadRecap(){
   }
 }
 
+/* Hitung agregat "hari ini" (untuk peta, tabel rekap, form provinsi) dari allRecords */
+function computeTodayAggregates(){
+  kasusHariIni = {};
+  laporanPuskesmasHariIni = {};
+  const today = document.getElementById("fTanggal").value;
+  allRecords.forEach(r => {
+    if (r.tanggal !== today) return;
+    const jumlah = Number(r.jumlah || 0);
+    kasusHariIni[r.kecamatan] = (kasusHariIni[r.kecamatan] || 0) + jumlah;
+    laporanPuskesmasHariIni[r.puskesmas] = (laporanPuskesmasHariIni[r.puskesmas] || 0) + jumlah;
+  });
+}
+
+/* Total kasus per hari untuk rentang tanggal tertentu, opsional filter kecamatan */
+function computeTrendSeries(startDate, endDate, kecFilter){
+  const days = [];
+  let d = new Date(startDate);
+  const end = new Date(endDate);
+  while (d <= end){
+    days.push(d.toISOString().slice(0,10));
+    d.setDate(d.getDate() + 1);
+  }
+  const perDay = {};
+  days.forEach(d => perDay[d] = 0);
+  allRecords.forEach(r => {
+    if (perDay[r.tanggal] === undefined) return;
+    if (kecFilter && kecFilter !== "ALL" && r.kecamatan !== kecFilter) return;
+    perDay[r.tanggal] += Number(r.jumlah || 0);
+  });
+  return { days, values: days.map(d => perDay[d]) };
+}
+
+/* Total kasus per kecamatan untuk rentang tanggal tertentu */
+function computeKecamatanTotals(startDate, endDate){
+  const totals = {};
+  KECAMATAN.forEach(k => totals[k.nama] = 0);
+  allRecords.forEach(r => {
+    if (r.tanggal < startDate || r.tanggal > endDate) return;
+    if (totals[r.kecamatan] === undefined) totals[r.kecamatan] = 0;
+    totals[r.kecamatan] += Number(r.jumlah || 0);
+  });
+  return totals;
+}
+
 /* ======================================================
    8a. CEK KECAMATAN YANG BELUM LAPOR HARI INI
 ====================================================== */
 function updateMissingKecamatanWarning(){
-  const belumLapor = KECAMATAN.filter(k => kasusHariIni[k.nama] === undefined).map(k => k.nama);
+  const belum = [];   // kecamatan yang SEMUA puskesmasnya belum lapor
+  const sebagian = []; // kecamatan yang SEBAGIAN puskesmasnya belum lapor
+
+  KECAMATAN.forEach(k => {
+    const daftarPuskesmas = PUSKESMAS.filter(p => p.kecamatan === k.nama).map(p => p.nama);
+    const belumLaporDiKec = daftarPuskesmas.filter(p => laporanPuskesmasHariIni[p] === undefined);
+
+    if (belumLaporDiKec.length === daftarPuskesmas.length){
+      belum.push({ kecamatan: k.nama, puskesmas: daftarPuskesmas });
+    } else if (belumLaporDiKec.length > 0){
+      sebagian.push({ kecamatan: k.nama, puskesmas: belumLaporDiKec });
+    }
+  });
 
   const bannerRekap = document.getElementById("missingKecamatanBanner");
   const bannerProvinsi = document.getElementById("missingKecamatanBannerProvinsi");
 
-  if (belumLapor.length === 0){
+  if (belum.length === 0 && sebagian.length === 0){
     bannerRekap.style.display = "none";
     bannerProvinsi.style.display = "none";
     return;
   }
 
-  const html = `
-    <strong>⚠ ${belumLapor.length} dari 17 kecamatan belum input data ISPA hari ini:</strong>
-    <ul>${belumLapor.map(n => `<li>${n}</li>`).join("")}</ul>
-    <div style="margin-top:6px;">Pastikan sudah dikonfirmasi ke Puskesmas terkait sebelum data dijumlahkan ke laporan provinsi — total saat ini mungkin belum lengkap.</div>
-  `;
+  let html = `<strong>⚠ ${belum.length + sebagian.length} dari 17 kecamatan belum lengkap laporannya hari ini:</strong><ul>`;
+  belum.forEach(b => {
+    html += `<li><strong>${b.kecamatan}</strong> — belum ada laporan sama sekali (dari: ${b.puskesmas.join(", ")})</li>`;
+  });
+  sebagian.forEach(s => {
+    html += `<li><strong>${s.kecamatan}</strong> — menunggu laporan dari: ${s.puskesmas.join(", ")}</li>`;
+  });
+  html += `</ul><div style="margin-top:6px;">Pastikan sudah dikonfirmasi ke Puskesmas terkait sebelum data dijumlahkan ke laporan provinsi — total saat ini mungkin belum lengkap.</div>`;
+
   bannerRekap.innerHTML = html;
   bannerRekap.className = "warning-banner";
   bannerRekap.style.display = "block";
@@ -752,16 +942,27 @@ function renderRecapTable(){
   document.getElementById("statKecTerdampak").textContent = kecTerdampak;
 }
 
+function setRentangPreset(nHari){
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - (nHari - 1));
+  document.getElementById("trendSampai").value = end.toISOString().slice(0,10);
+  document.getElementById("trendDari").value = start.toISOString().slice(0,10);
+  renderTrendChart();
+  renderKecamatanBarChart();
+}
+
 let trendChart;
 function renderTrendChart(){
-  const days = [];
-  const today = new Date();
-  for (let i = 13; i >= 0; i--){
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    days.push(d.toISOString().slice(0,10));
-  }
-  const kasusSeries = days.map(d => trendData[d]?.kasus ?? 0);
+  const startDate = document.getElementById("trendDari").value;
+  const endDate = document.getElementById("trendSampai").value;
+  if (!startDate || !endDate) return;
+
+  const filterKec = document.getElementById("trendKecFilter").value;
+  const { days, values } = computeTrendSeries(startDate, endDate, filterKec);
+  const label = filterKec === "ALL"
+    ? "Total Kasus ISPA / hari (semua kecamatan)"
+    : `Kasus ISPA / hari — Kecamatan ${filterKec}`;
 
   const ctx = document.getElementById("trendChart");
   if (trendChart) trendChart.destroy();
@@ -770,8 +971,8 @@ function renderTrendChart(){
     data: {
       labels: days.map(d => d.slice(5)),
       datasets: [{
-        label: 'Total Kasus ISPA / hari',
-        data: kasusSeries,
+        label: label,
+        data: values,
         borderColor: '#0f5c5c',
         backgroundColor: 'rgba(15,92,92,0.12)',
         fill: true,
@@ -780,10 +981,161 @@ function renderTrendChart(){
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false } },
+      plugins: { legend: { display: true, labels: { font: { size: 10 } } } },
       scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
     }
   });
+}
+
+let kecamatanBarChart;
+function renderKecamatanBarChart(){
+  const startDate = document.getElementById("trendDari").value;
+  const endDate = document.getElementById("trendSampai").value;
+  if (!startDate || !endDate) return;
+
+  const totals = computeKecamatanTotals(startDate, endDate);
+  const sorted = KECAMATAN.map(k => k.nama).sort((a,b) => totals[b] - totals[a]);
+
+  const ctx = document.getElementById("kecamatanBarChart");
+  if (kecamatanBarChart) kecamatanBarChart.destroy();
+  kecamatanBarChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted,
+      datasets: [{
+        label: 'Total Kasus ISPA',
+        data: sorted.map(k => totals[k]),
+        backgroundColor: '#0f5c5c'
+      }]
+    },
+    options: {
+      responsive: true,
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+}
+
+/* ======================================================
+   9a. REKAP PER PERIODE (mis. 3-harian untuk BPBD)
+====================================================== */
+function getPeriodeList(mulai, panjangHari){
+  // Buat daftar periode dari tanggal mulai sampai mencakup tanggal terbaru di allRecords (atau hari ini)
+  const semuaTanggal = allRecords.map(r => r.tanggal).sort();
+  const tanggalTerakhir = semuaTanggal.length ? semuaTanggal[semuaTanggal.length - 1] : new Date().toISOString().slice(0,10);
+  const akhir = new Date(Math.max(new Date(tanggalTerakhir), new Date()));
+
+  const periodeList = [];
+  let start = new Date(mulai);
+  while (start <= akhir){
+    const end = new Date(start);
+    end.setDate(end.getDate() + panjangHari - 1);
+    periodeList.push({
+      label: `${start.toISOString().slice(0,10)} s/d ${end.toISOString().slice(0,10)}`,
+      start: start.toISOString().slice(0,10),
+      end: end.toISOString().slice(0,10)
+    });
+    start = new Date(end);
+    start.setDate(start.getDate() + 1);
+  }
+  return periodeList;
+}
+
+function kondisiTerparah(records){
+  const urutan = ["Asap Pekat", "Asap Sedang", "Asap Tipis"];
+  for (const level of urutan){
+    if (records.some(r => r.kondisi === level)) return level;
+  }
+  if (records.some(r => r.kondisi === "Tidak Ada Asap")) return "Tidak Ada Asap";
+  return "Tidak ada data";
+}
+
+let lastRekapPeriodeData = null; // dipakai untuk ekspor CSV
+
+function renderRekapPeriode(){
+  const mulai = document.getElementById("periodeMulai").value;
+  const panjang = parseInt(document.getElementById("periodePanjang").value || "3", 10);
+  const level = document.getElementById("periodeLevel").value;
+  if (!mulai){
+    alert("Isi dulu tanggal mulai periode.");
+    return;
+  }
+
+  const periodeList = getPeriodeList(mulai, panjang);
+  const entitas = level === "kecamatan"
+    ? KECAMATAN.map(k => ({ nama: k.nama, kecamatan: k.nama }))
+    : PUSKESMAS.map(p => ({ nama: p.nama, kecamatan: p.kecamatan }));
+
+  const head = document.getElementById("rekapPeriodeHead");
+  head.innerHTML = `
+    <th>Periode</th>
+    <th>${level === "kecamatan" ? "Kecamatan" : "Puskesmas"}</th>
+    ${level === "puskesmas" ? "<th>Kecamatan</th>" : ""}
+    <th>Kasus ISPA</th>
+    <th>Rawat Inap</th>
+    <th>Dirujuk</th>
+    <th>Fasyankes Lapor</th>
+    <th>Kondisi Karhutla Terparah</th>
+  `;
+
+  const tbody = document.querySelector("#rekapPeriodeTable tbody");
+  tbody.innerHTML = "";
+  const exportRows = [];
+
+  periodeList.forEach(periode => {
+    entitas.forEach(ent => {
+      const recs = allRecords.filter(r => {
+        if (r.tanggal < periode.start || r.tanggal > periode.end) return false;
+        return level === "kecamatan" ? r.kecamatan === ent.nama : r.puskesmas === ent.nama;
+      });
+      const totalKasus = recs.reduce((a,r) => a + Number(r.jumlah||0), 0);
+      const totalRawat = recs.reduce((a,r) => a + Number(r.rawatInap||0), 0);
+      const totalDirujuk = recs.filter(r => r.dirujuk === "Ya").length;
+      const jmlLapor = recs.length;
+      const kondisi = kondisiTerparah(recs);
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${periode.label}</td>
+        <td>${ent.nama}</td>
+        ${level === "puskesmas" ? `<td>${ent.kecamatan}</td>` : ""}
+        <td>${totalKasus}</td>
+        <td>${totalRawat}</td>
+        <td>${totalDirujuk}</td>
+        <td>${jmlLapor}</td>
+        <td>${kondisi}</td>
+      `;
+      tbody.appendChild(tr);
+
+      exportRows.push([
+        periode.label, ent.nama, level === "puskesmas" ? ent.kecamatan : "",
+        totalKasus, totalRawat, totalDirujuk, jmlLapor, kondisi
+      ]);
+    });
+  });
+
+  lastRekapPeriodeData = { level, rows: exportRows };
+}
+
+function exportRekapPeriodeCSV(){
+  if (!lastRekapPeriodeData){
+    renderRekapPeriode();
+  }
+  const level = lastRekapPeriodeData.level;
+  let csv = level === "puskesmas"
+    ? "Periode,Puskesmas,Kecamatan,Kasus ISPA,Rawat Inap,Dirujuk,Fasyankes Lapor,Kondisi Karhutla Terparah\n"
+    : "Periode,Kecamatan,Kasus ISPA,Rawat Inap,Dirujuk,Fasyankes Lapor,Kondisi Karhutla Terparah\n";
+  lastRekapPeriodeData.rows.forEach(row => {
+    const cols = level === "puskesmas" ? row : [row[0], row[1], row[3], row[4], row[5], row[6], row[7]];
+    csv += cols.map(v => `"${v}"`).join(",") + "\n";
+  });
+  const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `rekap-periode-ispa-kapuas.csv`;
+  a.click();
 }
 
 /* ======================================================
@@ -801,6 +1153,9 @@ document.getElementById("ispaForm").addEventListener("submit", async (e) => {
     kecamatan: document.getElementById("fKecamatan").value,
     puskesmas: document.getElementById("fPuskesmas").value,
     jumlah: document.getElementById("fJumlah").value,
+    rawatInap: document.getElementById("fRawatInap").value,
+    dirujuk: document.getElementById("fDirujuk").value,
+    kondisi: document.getElementById("fKondisiKarhutla").value,
     catatan: document.getElementById("fCatatan").value
   };
   try{
@@ -811,6 +1166,8 @@ document.getElementById("ispaForm").addEventListener("submit", async (e) => {
     });
     setStatus("formStatus", "Laporan tersimpan.", "ok");
     document.getElementById("fJumlah").value = "";
+    document.getElementById("fRawatInap").value = "0";
+    document.getElementById("fDirujuk").value = "Tidak";
     document.getElementById("fCatatan").value = "";
     await refreshAll();
   } catch(err){
@@ -878,9 +1235,11 @@ function autoIsiLaporanProvinsi(){
   else kondisiSel.value = "Asap Pekat";
 
   // Peningkatan kasus ISPA: bandingkan kasus hari ini vs rata-rata 7 hari sebelumnya
-  const days = Object.keys(trendData).sort();
-  const prevDays = days.filter(d => d < document.getElementById("fTanggal").value).slice(-7);
-  const avgPrev = prevDays.length ? prevDays.reduce((a,d)=>a+(trendData[d]?.kasus||0),0)/prevDays.length : 0;
+  const today = document.getElementById("fTanggal").value;
+  const semuaTanggal = [...new Set(allRecords.map(r => r.tanggal))].sort();
+  const prevDays = semuaTanggal.filter(d => d < today).slice(-7);
+  const totalPerHari = d => allRecords.filter(r => r.tanggal === d).reduce((a,r) => a + Number(r.jumlah||0), 0);
+  const avgPrev = prevDays.length ? prevDays.reduce((a,d) => a + totalPerHari(d), 0) / prevDays.length : 0;
   document.getElementById("pPeningkatan").value = totalKasus > avgPrev ? "Ya" : "Tidak";
 }
 
@@ -1004,9 +1363,11 @@ function setStatus(id, msg, type){
 async function refreshAll(){
   setStatus("refreshStatus", "Memuat data...", "");
   await Promise.all([loadHotspots(), loadRecap()]);
+  computeTodayAggregates();
   updateMarkers();
   renderRecapTable();
   renderTrendChart();
+  renderKecamatanBarChart();
   updateMissingKecamatanWarning();
   autoIsiLaporanProvinsi();
 }
@@ -1015,10 +1376,25 @@ function init(){
   const todayStr = new Date().toISOString().slice(0,10);
   document.getElementById("fTanggal").value = todayStr;
   document.getElementById("todayLabel").textContent = new Date().toLocaleDateString('id-ID', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  // Default rentang grafik: 14 hari terakhir
+  const start14 = new Date();
+  start14.setDate(start14.getDate() - 13);
+  document.getElementById("trendDari").value = start14.toISOString().slice(0,10);
+  document.getElementById("trendSampai").value = todayStr;
+
+  // Default tanggal mulai periode rekap: awal bulan berjalan
+  const awalBulan = new Date();
+  awalBulan.setDate(1);
+  document.getElementById("periodeMulai").value = awalBulan.toISOString().slice(0,10);
+
   fillKecamatanSelects();
+  fillPuskesmasSelect(document.getElementById("fKecamatan").value);
   initMarkers();
   refreshAll();
   document.getElementById("fTanggal").addEventListener("change", refreshAll);
+  document.getElementById("trendDari").addEventListener("change", () => { renderTrendChart(); renderKecamatanBarChart(); });
+  document.getElementById("trendSampai").addEventListener("change", () => { renderTrendChart(); renderKecamatanBarChart(); });
 }
 init();
 </script>
