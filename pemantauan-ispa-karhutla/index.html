@@ -73,6 +73,33 @@
     .layout{grid-template-columns:1fr;}
   }
 
+  .tabnav{
+    display:flex;
+    gap:8px;
+    max-width:1500px;
+    margin:16px auto 0;
+    padding:0 18px;
+  }
+  .tabnav-btn{
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--teal-dark);
+    padding:10px 20px;
+    border-radius:8px 8px 0 0;
+    font-size:0.9rem;
+    font-weight:600;
+    cursor:pointer;
+    border-bottom:none;
+  }
+  .tabnav-btn.active{
+    background:var(--teal-dark);
+    color:#fff;
+    border-color:var(--teal-dark);
+  }
+  #inputView .layout, #dashboardView.layout{
+    padding-top:8px;
+  }
+
   .panel{
     background:var(--panel);
     border:1px solid var(--line);
@@ -266,13 +293,22 @@
   </div>
 </header>
 
-<div class="layout">
+<nav class="tabnav">
+  <button type="button" class="tabnav-btn active" id="tabBtnDashboard" onclick="showTab('dashboard')">📊 Dashboard</button>
+  <button type="button" class="tabnav-btn" id="tabBtnInput" onclick="showTab('input')">📝 Input Data</button>
+</nav>
+
+<div class="layout" id="dashboardView">
 
   <!-- KOLOM KIRI: PETA + LEGENDA + REKAP -->
   <div>
     <div class="panel">
       <h2>Peta Status per Kecamatan <span class="hint">warna = estimasi kategori ISPU</span></h2>
       <div id="map"></div>
+      <label style="display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--muted); margin-top:10px;">
+        <input type="checkbox" id="toggleHotspotPoints" checked onchange="toggleHotspotPoints()">
+        Tampilkan titik sebaran hotspot individual (NASA FIRMS)
+      </label>
       <div class="legend">
         <span><i style="background:var(--good)"></i> Baik (0–50)</span>
         <span><i style="background:var(--sedang)"></i> Sedang (51–100)</span>
@@ -280,10 +316,11 @@
         <span><i style="background:var(--sangat-tidak-sehat)"></i> Sangat Tidak Sehat (200–299)</span>
         <span><i style="background:var(--berbahaya)"></i> Berbahaya (&gt;300)</span>
         <span><i style="background:#999"></i> Belum ada data</span>
+        <span><i style="background:#ff4500; width:7px; height:7px;"></i> Titik hotspot (FIRMS)</span>
       </div>
       <div class="banner">
         <strong>Catatan penting soal data ISPU</strong>
-        Tidak ada stasiun AQMS resmi KLHK di Kapuas. Nilai ISPU pada peta ini adalah <em>estimasi</em>, dihitung dari jumlah titik panas (hotspot) NASA FIRMS di sekitar tiap kecamatan ditambah nilai dasar PM2.5 regional. Gunakan sebagai indikator dini, bukan pengganti pengukuran resmi.
+        Tidak ada stasiun AQMS resmi KLHK di Kapuas. Nilai ISPU pada peta ini adalah <em>estimasi</em>, dihitung dari jumlah titik panas (hotspot) NASA FIRMS di sekitar tiap kecamatan ditambah nilai dasar PM2.5 regional. Gunakan sebagai indikator dini, bukan pengganti pengukuran resmi. Titik oranye kecil menandakan lokasi hotspot individual yang terdeteksi satelit dalam 2 hari terakhir — hotspot tidak selalu berarti kebakaran aktif (bisa anomali termal lain), perlu verifikasi lapangan untuk kasus penting.
       </div>
     </div>
 
@@ -377,7 +414,12 @@
     </div>
   </div>
 
-  <!-- KOLOM KANAN: FORM INPUT + KONFIGURASI -->
+</div>
+<!-- akhir dashboardView -->
+
+<div class="layout" id="inputView" style="display:none;">
+
+  <!-- KOLOM: FORM INPUT + KONFIGURASI -->
 
   <div>
     <div class="panel">
@@ -391,6 +433,10 @@
 
         <label>Puskesmas / Fasyankes Pelapor</label>
         <select id="fPuskesmas" required></select>
+
+        <label>Kode Akses Puskesmas <span style="font-weight:400; color:var(--muted);">(diberikan oleh Dinkes ke fasyankes masing-masing)</span></label>
+        <input type="password" id="fPin" inputmode="numeric" placeholder="PIN 4 digit" required autocomplete="off">
+        <div id="pinStatus" class="status-msg"></div>
 
         <label>Jumlah Kasus ISPA Baru</label>
         <input type="number" id="fJumlah" min="0" required>
@@ -419,7 +465,9 @@
         <div id="formStatus" class="status-msg"></div>
       </form>
     </div>
+  </div>
 
+  <div>
     <div class="panel">
       <h2>Input Manual ISPU (opsional)</h2>
       <p style="font-size:0.78rem;color:var(--muted);margin-top:0;">
@@ -577,6 +625,27 @@
 
 <script>
 /* ======================================================
+   0. NAVIGASI TAB DASHBOARD / INPUT DATA
+====================================================== */
+function showTab(tab){
+  const dash = document.getElementById("dashboardView");
+  const input = document.getElementById("inputView");
+  const btnDash = document.getElementById("tabBtnDashboard");
+  const btnInput = document.getElementById("tabBtnInput");
+  if (tab === "dashboard"){
+    dash.style.display = "grid";
+    input.style.display = "none";
+    btnDash.classList.add("active");
+    btnInput.classList.remove("active");
+  } else {
+    dash.style.display = "none";
+    input.style.display = "grid";
+    btnInput.classList.add("active");
+    btnDash.classList.remove("active");
+  }
+}
+
+/* ======================================================
    1. DATA DASAR 17 KECAMATAN KABUPATEN KAPUAS
    Koordinat = titik lokasi Puskesmas di kecamatan tsb,
    diambil dari data GPS presisi (Google Maps) yang sudah
@@ -666,6 +735,8 @@ function saveConfig(){
    3. STATE APLIKASI
 ====================================================== */
 let hotspotCounts = {};   // { "Selat": 3, ... }
+let hotspotPoints = [];   // [{lat, lng}, ...] titik individual dari FIRMS
+let hotspotLayerGroup = null;
 let manualISPU = {};      // { "Selat": 120, ... } input manual (opsional, override)
 let kasusHariIni = {};    // { "Selat": 5, ... } total per kecamatan hari ini
 let laporanPuskesmasHariIni = {}; // { "Puskesmas Selat": 3, ... } per puskesmas hari ini
@@ -774,6 +845,7 @@ document.getElementById("fKecamatan").addEventListener("change", (e) => {
 ====================================================== */
 async function loadHotspots(){
   hotspotCounts = {};
+  hotspotPoints = [];
   if (!SCRIPT_URL){
     setStatus("refreshStatus", "Belum ada URL backend — data hotspot tidak dimuat. Isi di 'Pengaturan koneksi data'.", "err");
     return;
@@ -783,11 +855,12 @@ async function loadHotspots(){
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     // data.points = [{lat, lng}, ...] dari FIRMS 24-48 jam terakhir
+    hotspotPoints = data.points || [];
     KECAMATAN.forEach(k => {
-      const count = data.points.filter(p => haversine(k.lat, k.lng, p.lat, p.lng) <= RADIUS_KM).length;
+      const count = hotspotPoints.filter(p => haversine(k.lat, k.lng, p.lat, p.lng) <= RADIUS_KM).length;
       hotspotCounts[k.nama] = count;
     });
-    setStatus("refreshStatus", `Data hotspot dimuat: ${data.points.length} titik panas (${data.window || '24-48 jam terakhir'}).`, "ok");
+    setStatus("refreshStatus", `Data hotspot dimuat: ${hotspotPoints.length} titik panas (${data.window || '24-48 jam terakhir'}).`, "ok");
   } catch(err){
     setStatus("refreshStatus", "Gagal memuat data hotspot: " + err.message, "err");
   }
@@ -799,6 +872,41 @@ function haversine(lat1, lon1, lat2, lon2){
   const dLon = (lon2-lon1) * Math.PI/180;
   const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+/* ======================================================
+   6a. RENDER TITIK SEBARAN HOTSPOT INDIVIDUAL DI PETA
+====================================================== */
+function renderHotspotPoints(){
+  if (hotspotLayerGroup){
+    map.removeLayer(hotspotLayerGroup);
+  }
+  hotspotLayerGroup = L.layerGroup();
+
+  hotspotPoints.forEach(p => {
+    const dot = L.circleMarker([p.lat, p.lng], {
+      radius: 3,
+      color: "#ff4500",
+      fillColor: "#ff4500",
+      fillOpacity: 0.75,
+      weight: 1
+    });
+    dot.bindTooltip(`Hotspot: ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`, {permanent:false});
+    hotspotLayerGroup.addLayer(dot);
+  });
+
+  if (document.getElementById("toggleHotspotPoints").checked){
+    hotspotLayerGroup.addTo(map);
+  }
+}
+
+function toggleHotspotPoints(){
+  if (!hotspotLayerGroup) return;
+  if (document.getElementById("toggleHotspotPoints").checked){
+    hotspotLayerGroup.addTo(map);
+  } else {
+    map.removeLayer(hotspotLayerGroup);
+  }
 }
 
 /* ======================================================
@@ -1141,17 +1249,45 @@ function exportRekapPeriodeCSV(){
 /* ======================================================
    9. FORM SUBMIT: KASUS ISPA
 ====================================================== */
+let verifiedPuskesmas = {}; // { "Puskesmas Selat": true } — cache verifikasi PIN untuk sesi browser ini
+
+async function verifyPin(puskesmas, pin){
+  const res = await fetch(`${SCRIPT_URL}?action=verify_pin&puskesmas=${encodeURIComponent(puskesmas)}&pin=${encodeURIComponent(pin)}`);
+  const data = await res.json();
+  return data.ok === true;
+}
+
 document.getElementById("ispaForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!SCRIPT_URL){
     setStatus("formStatus", "Isi dulu URL backend di 'Pengaturan koneksi data'.", "err");
     return;
   }
+
+  const puskesmasTerpilih = document.getElementById("fPuskesmas").value;
+  const pinInput = document.getElementById("fPin").value.trim();
+
+  if (!verifiedPuskesmas[puskesmasTerpilih]){
+    setStatus("pinStatus", "Memeriksa PIN...", "");
+    try{
+      const ok = await verifyPin(puskesmasTerpilih, pinInput);
+      if (!ok){
+        setStatus("pinStatus", "PIN salah untuk " + puskesmasTerpilih + ". Hubungi Dinkes kalau lupa PIN.", "err");
+        return;
+      }
+      verifiedPuskesmas[puskesmasTerpilih] = true;
+      setStatus("pinStatus", "PIN terverifikasi ✓", "ok");
+    } catch(err){
+      setStatus("pinStatus", "Gagal memeriksa PIN: " + err.message, "err");
+      return;
+    }
+  }
+
   const payload = {
     action: "simpan_ispa",
     tanggal: document.getElementById("fTanggal").value,
     kecamatan: document.getElementById("fKecamatan").value,
-    puskesmas: document.getElementById("fPuskesmas").value,
+    puskesmas: puskesmasTerpilih,
     jumlah: document.getElementById("fJumlah").value,
     rawatInap: document.getElementById("fRawatInap").value,
     dirujuk: document.getElementById("fDirujuk").value,
@@ -1365,6 +1501,7 @@ async function refreshAll(){
   await Promise.all([loadHotspots(), loadRecap()]);
   computeTodayAggregates();
   updateMarkers();
+  renderHotspotPoints();
   renderRecapTable();
   renderTrendChart();
   renderKecamatanBarChart();
