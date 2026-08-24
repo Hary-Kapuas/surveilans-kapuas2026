@@ -370,7 +370,7 @@
       </div>
       <div class="banner">
         <strong>Catatan penting soal data ISPU</strong>
-        Tidak ada stasiun AQMS resmi KLHK di Kapuas. Nilai ISPU pada peta ini adalah <em>estimasi</em>, dihitung dari jumlah titik panas (hotspot) NASA FIRMS di sekitar tiap kecamatan ditambah nilai dasar PM2.5 regional. Gunakan sebagai indikator dini, bukan pengganti pengukuran resmi. Titik oranye kecil menandakan lokasi hotspot individual yang terdeteksi satelit dalam 2 hari terakhir — hotspot tidak selalu berarti kebakaran aktif (bisa anomali termal lain), perlu verifikasi lapangan untuk kasus penting.
+        Sejak Agustus 2026, Kabupaten Kapuas sudah punya <strong>1 stasiun AQMS resmi KLHK</strong> (lokasi: Kel. Selat Hulu, Kec. Selat) — kecamatan Selat kini otomatis memakai data ISPU RESMI dari stasiun tersebut, diperbarui otomatis. Untuk 16 kecamatan lainnya (belum ada stasiun), nilai ISPU tetap <em>estimasi</em>, dihitung dari jumlah titik panas (hotspot) NASA FIRMS ditambah nilai dasar PM2.5 regional — gunakan sebagai indikator dini, bukan pengganti pengukuran resmi. Titik oranye kecil menandakan lokasi hotspot individual yang terdeteksi satelit dalam 2 hari terakhir.
       </div>
     </div>
 
@@ -790,6 +790,7 @@ let hotspotCounts = {};   // { "Selat": 3, ... }
 let hotspotPoints = [];   // [{lat, lng}, ...] titik individual dari FIRMS
 let hotspotLayerGroup = null;
 let manualISPU = {};      // { "Selat": 120, ... } input manual (opsional, override)
+let officialISPU = {};    // { "Selat": {ispu, kategori, waktu, param, pm25} } data RESMI dari AQMS KLHK
 let kasusHariIni = {};    // { "Selat": 5, ... } total per kecamatan hari ini
 let laporanPuskesmasHariIni = {}; // { "Puskesmas Selat": 3, ... } per puskesmas hari ini
 let allRecords = [];      // seluruh record ISPA dari backend (bukan cuma hari ini)
@@ -813,7 +814,12 @@ function statusFromScore(score){
   return { label: "Berbahaya", color: "#5a1f2b" };
 }
 
+/* Sumber nilai ISPU per kecamatan, urutan prioritas:
+   1) Data RESMI dari stasiun AQMS KLHK (kalau kecamatan itu ada stasiunnya)
+   2) Input manual dari petugas (override)
+   3) Estimasi otomatis dari kepadatan hotspot FIRMS */
 function computeScore(namaKec){
+  if (officialISPU[namaKec] !== undefined) return officialISPU[namaKec].ispu;
   if (manualISPU[namaKec] !== undefined) return manualISPU[namaKec];
   const hs = hotspotCounts[namaKec];
   if (hs === undefined) return null;
@@ -822,6 +828,26 @@ function computeScore(namaKec){
   else if (hs >= 4 && hs <= 10) addOn = 50;
   else if (hs > 10) addOn = 100;
   return baselineISPU + addOn;
+}
+
+function sumberScore(namaKec){
+  if (officialISPU[namaKec] !== undefined) return "resmi";
+  if (manualISPU[namaKec] !== undefined) return "manual";
+  return "estimasi";
+}
+
+async function loadIspuResmi(){
+  officialISPU = {};
+  if (!SCRIPT_URL) return;
+  try{
+    const res = await fetch(`${SCRIPT_URL}?action=ispu_resmi`);
+    const data = await res.json();
+    if (data.ok && data.ispu !== null){
+      officialISPU[data.kecamatan] = data;
+    }
+  } catch(err){
+    // Diam-diam gagal — kecamatan tsb otomatis kembali pakai estimasi
+  }
 }
 
 function initMarkers(){
@@ -845,8 +871,15 @@ function updateMarkers(){
     markers[k.nama].setStyle({ fillColor: st.color });
     const hs = hotspotCounts[k.nama] ?? "-";
     const kasus = kasusHariIni[k.nama] ?? 0;
+    const sumber = sumberScore(k.nama);
+    const labelSumber = sumber === "resmi" ? "resmi AQMS KLHK" : sumber === "manual" ? "manual" : "estimasi";
+    let infoTambahan = "";
+    if (sumber === "resmi"){
+      const o = officialISPU[k.nama];
+      infoTambahan = `<br>Kategori KLHK: ${o.kategori}<br>Parameter kritis: ${o.parameterKritis}<br>Update terakhir: ${o.waktu}`;
+    }
     markers[k.nama].bindPopup(
-      `<strong>${k.nama}</strong><br>Status: ${st.label}${manualISPU[k.nama] !== undefined ? " (manual)" : " (estimasi)"}<br>Hotspot 24 jam: ${hs}<br>Kasus ISPA hari ini: ${kasus}`
+      `<strong>${k.nama}</strong><br>Status: ${st.label} (${labelSumber})${infoTambahan}<br>Hotspot 24 jam: ${hs}<br>Kasus ISPA hari ini: ${kasus}`
     );
   });
 }
@@ -1658,7 +1691,7 @@ function setStatus(id, msg, type){
 
 async function refreshAll(){
   setStatus("refreshStatus", "Memuat data...", "");
-  await Promise.all([loadHotspots(), loadRecap()]);
+  await Promise.all([loadHotspots(), loadRecap(), loadIspuResmi()]);
   computeTodayAggregates();
   updateMarkers();
   renderHotspotPoints();
