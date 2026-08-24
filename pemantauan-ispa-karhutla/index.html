@@ -350,7 +350,7 @@
 
 <div class="layout" id="dashboardView">
 
-  <!-- KOLOM KIRI: PETA + LEGENDA + REKAP -->
+  <!-- KOLOM KIRI: PETA + TREN & REKAP -->
   <div>
     <div class="panel">
       <h2>Peta Status per Kecamatan <span class="hint">warna = estimasi kategori ISPU</span></h2>
@@ -373,42 +373,7 @@
         Sejak Agustus 2026, Kabupaten Kapuas sudah punya <strong>1 stasiun AQMS resmi KLHK</strong> (lokasi: Kel. Selat Hulu, Kec. Selat) — kecamatan Selat kini otomatis memakai data ISPU RESMI dari stasiun tersebut, diperbarui otomatis. Untuk 16 kecamatan lainnya (belum ada stasiun), nilai ISPU tetap <em>estimasi</em>, dihitung dari jumlah titik panas (hotspot) NASA FIRMS ditambah nilai dasar PM2.5 regional — gunakan sebagai indikator dini, bukan pengganti pengukuran resmi. Titik oranye kecil menandakan lokasi hotspot individual yang terdeteksi satelit dalam 2 hari terakhir.
       </div>
     </div>
-  </div>
 
-  <!-- KOLOM KANAN: REKAP HARIAN -->
-  <div>
-    <div class="panel">
-      <h2>Rekap Harian per Kecamatan</h2>
-      <div class="stat-row">
-        <div class="stat-card"><div class="num" id="statTotalKasus">0</div><div class="lbl">Kasus ISPA Hari Ini</div></div>
-        <div class="stat-card"><div class="num" id="statTotalHotspot">0</div><div class="lbl">Hotspot Terdeteksi</div></div>
-        <div class="stat-card"><div class="num" id="statKecTerdampak">0</div><div class="lbl">Kecamatan Tidak Sehat+</div></div>
-      </div>
-      <div id="missingKecamatanBanner" style="display:none;"></div>
-      <table id="recapTable">
-        <thead>
-          <tr>
-            <th>Kecamatan</th>
-            <th>Status ISPU (est.)</th>
-            <th>Hotspot 24 jam</th>
-            <th>Kasus ISPA hari ini</th>
-          </tr>
-        </thead>
-        <tbody><!-- diisi oleh JS --></tbody>
-      </table>
-      <div class="btn-row" style="margin-top:12px;">
-        <button class="btn secondary" onclick="refreshAll()">↻ Muat Ulang Data</button>
-        <button class="btn secondary" onclick="exportCSV()">⬇ Ekspor Rekap (CSV)</button>
-      </div>
-      <div id="refreshStatus" class="status-msg"></div>
-    </div>
-  </div>
-
-</div>
-
-<div class="layout" id="dashboardRow2">
-
-  <div>
     <div class="panel">
       <h2>Tren &amp; Rekap Kasus ISPA</h2>
 
@@ -442,7 +407,34 @@
     </div>
   </div>
 
+  <!-- KOLOM KANAN: REKAP HARIAN + REKAP PER PERIODE -->
   <div>
+    <div class="panel">
+      <h2>Rekap Harian per Kecamatan</h2>
+      <div class="stat-row">
+        <div class="stat-card"><div class="num" id="statTotalKasus">0</div><div class="lbl">Kasus ISPA Hari Ini</div></div>
+        <div class="stat-card"><div class="num" id="statTotalHotspot">0</div><div class="lbl">Hotspot Terdeteksi</div></div>
+        <div class="stat-card"><div class="num" id="statKecTerdampak">0</div><div class="lbl">Kecamatan Tidak Sehat+</div></div>
+      </div>
+      <div id="missingKecamatanBanner" style="display:none;"></div>
+      <table id="recapTable">
+        <thead>
+          <tr>
+            <th>Kecamatan</th>
+            <th>Status ISPU (est.)</th>
+            <th>Hotspot 24 jam</th>
+            <th>Kasus ISPA hari ini</th>
+          </tr>
+        </thead>
+        <tbody><!-- diisi oleh JS --></tbody>
+      </table>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn secondary" onclick="refreshAll()">↻ Muat Ulang Data</button>
+        <button class="btn secondary" onclick="exportCSV()">⬇ Ekspor Rekap (CSV)</button>
+      </div>
+      <div id="refreshStatus" class="status-msg"></div>
+    </div>
+
     <div class="panel">
       <h2>Rekap Per Periode <span class="hint">mis. untuk laporan 3-harian BPBD</span></h2>
       <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
@@ -476,7 +468,7 @@
   </div>
 
 </div>
-<!-- akhir dashboardView (2 baris x 2 kolom) -->
+<!-- akhir dashboardView (2 kolom, tiap kolom bertumpuk otomatis) -->
 
 <div class="layout" id="inputView" style="display:none;">
 
@@ -692,19 +684,16 @@
 ====================================================== */
 function showTab(tab){
   const dash = document.getElementById("dashboardView");
-  const dash2 = document.getElementById("dashboardRow2");
   const input = document.getElementById("inputView");
   const btnDash = document.getElementById("tabBtnDashboard");
   const btnInput = document.getElementById("tabBtnInput");
   if (tab === "dashboard"){
     dash.style.display = "grid";
-    dash2.style.display = "grid";
     input.style.display = "none";
     btnDash.classList.add("active");
     btnInput.classList.remove("active");
   } else {
     dash.style.display = "none";
-    dash2.style.display = "none";
     input.style.display = "grid";
     btnInput.classList.add("active");
     btnDash.classList.remove("active");
