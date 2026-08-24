@@ -238,6 +238,54 @@
   .warning-banner strong{display:block; margin-bottom:4px;}
   .warning-banner ul{margin:4px 0 0 18px; padding:0;}
 
+  .data-status-box{
+    padding:10px 12px;
+    border-radius:8px;
+    font-size:0.8rem;
+    line-height:1.5;
+  }
+  .data-status-box.sudah-ada{
+    background:#fff4e5;
+    border:1px solid var(--tidak-sehat);
+    color:#6b4b12;
+  }
+  .data-status-box.belum-ada{
+    background:#eef7f0;
+    border:1px solid var(--good);
+    color:#265c3c;
+  }
+  .data-status-box.checking{
+    background:#f2f2f2;
+    border:1px solid var(--line);
+    color:var(--muted);
+  }
+
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(10,30,30,0.55);
+    display:flex; align-items:center; justify-content:center;
+    z-index:1000;
+  }
+  .modal-box{
+    background:#fff; border-radius:10px; padding:24px;
+    max-width:440px; width:90%;
+    box-shadow:0 10px 40px rgba(0,0,0,0.3);
+  }
+  .modal-box h3{margin:0 0 10px; color:var(--teal-dark); font-size:1.1rem;}
+  .modal-box p{font-size:0.88rem; line-height:1.5; color:var(--ink);}
+  .modal-box .btn-row{margin-top:16px;}
+
+  .save-confirm{
+    background:#eef7f0;
+    border:1px solid var(--good);
+    color:#265c3c;
+    padding:14px 16px;
+    border-radius:8px;
+    font-size:0.85rem;
+    line-height:1.6;
+    margin-top:10px;
+  }
+  .save-confirm strong{display:block; font-size:0.95rem; margin-bottom:4px;}
+
   .stat-row{
     display:grid;
     grid-template-columns:repeat(3,1fr);
@@ -292,6 +340,8 @@
     <div>Sumber hotspot: NASA FIRMS · Estimasi ISPU: model lokal</div>
   </div>
 </header>
+
+<div id="modalContainer"></div>
 
 <nav class="tabnav">
   <button type="button" class="tabnav-btn active" id="tabBtnDashboard" onclick="showTab('dashboard')">📊 Dashboard</button>
@@ -433,6 +483,8 @@
 
         <label>Puskesmas / Fasyankes Pelapor</label>
         <select id="fPuskesmas" required></select>
+
+        <div id="cekDataStatus" style="margin-top:8px;"></div>
 
         <label>Kode Akses Puskesmas <span style="font-weight:400; color:var(--muted);">(diberikan oleh Dinkes ke fasyankes masing-masing)</span></label>
         <input type="password" id="fPin" inputmode="numeric" placeholder="PIN 4 digit" required autocomplete="off">
@@ -833,11 +885,56 @@ function fillPuskesmasSelect(kecamatanNama){
     opt.textContent = p.nama;
     sel.appendChild(opt);
   });
+  cekDataHariIni();
 }
 
 document.getElementById("fKecamatan").addEventListener("change", (e) => {
   fillPuskesmasSelect(e.target.value);
 });
+document.getElementById("fPuskesmas").addEventListener("change", cekDataHariIni);
+document.getElementById("fTanggal").addEventListener("change", cekDataHariIni);
+
+/* ======================================================
+   5a. CEK APAKAH SUDAH ADA LAPORAN UNTUK KOMBINASI INI
+====================================================== */
+let existingRecordInfo = null; // hasil cek terakhir dari backend
+
+async function cekDataHariIni(){
+  const box = document.getElementById("cekDataStatus");
+  existingRecordInfo = null;
+  if (!SCRIPT_URL){ box.innerHTML = ""; return; }
+
+  const kecamatan = document.getElementById("fKecamatan").value;
+  const puskesmas = document.getElementById("fPuskesmas").value;
+  const tanggal = document.getElementById("fTanggal").value;
+  if (!kecamatan || !puskesmas || !tanggal){ box.innerHTML = ""; return; }
+
+  box.innerHTML = `<div class="data-status-box checking">⏳ Memeriksa data tersimpan...</div>`;
+  try{
+    const url = `${SCRIPT_URL}?action=cek_ispa&kecamatan=${encodeURIComponent(kecamatan)}&puskesmas=${encodeURIComponent(puskesmas)}&tanggal=${encodeURIComponent(tanggal)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.error){ box.innerHTML = ""; return; }
+
+    if (data.exists){
+      existingRecordInfo = data;
+      const jamSimpan = data.data.timestamp ? new Date(data.data.timestamp).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) : "-";
+      let dupWarning = "";
+      if (data.duplicateCount > 1){
+        dupWarning = `<br><strong>⚠ Perhatian:</strong> Ditemukan ${data.duplicateCount} baris data untuk kombinasi ini (kemungkinan sudah dobel dari sebelumnya). Update di sini hanya akan mengubah data yang paling baru — hubungi Dinkes untuk membersihkan baris duplikat lama.`;
+      }
+      box.innerHTML = `<div class="data-status-box sudah-ada">
+        ✔ Sudah ada laporan tersimpan untuk <strong>${puskesmas}</strong> tanggal <strong>${tanggal}</strong> (disimpan pukul ${jamSimpan}):
+        Kasus ISPA: <strong>${data.data.jumlah}</strong>, Rawat Inap: <strong>${data.data.rawatInap}</strong>, Dirujuk: <strong>${data.data.dirujuk}</strong>.
+        Kalau Bapak/Ibu submit lagi, sistem akan menanyakan apakah ini <em>update</em> data tersebut.${dupWarning}
+      </div>`;
+    } else {
+      box.innerHTML = `<div class="data-status-box belum-ada">○ Belum ada laporan tersimpan untuk ${puskesmas} tanggal ${tanggal}. Silakan isi form di bawah.</div>`;
+    }
+  } catch(err){
+    box.innerHTML = "";
+  }
+}
 
 /* ======================================================
    6. AMBIL DATA HOTSPOT (via backend proxy, hindari CORS
@@ -1257,6 +1354,32 @@ async function verifyPin(puskesmas, pin){
   return data.ok === true;
 }
 
+function showModal(title, message, buttons){
+  const container = document.getElementById("modalContainer");
+  const btnHtml = buttons.map((b, i) =>
+    `<button type="button" class="btn ${b.secondary ? 'secondary' : ''}" id="modalBtn${i}">${b.label}</button>`
+  ).join(" ");
+  container.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal-box">
+        <h3>${title}</h3>
+        <p>${message}</p>
+        <div class="btn-row">${btnHtml}</div>
+      </div>
+    </div>
+  `;
+  buttons.forEach((b, i) => {
+    document.getElementById(`modalBtn${i}`).addEventListener("click", () => {
+      container.innerHTML = "";
+      b.onClick();
+    });
+  });
+}
+
+function closeModal(){
+  document.getElementById("modalContainer").innerHTML = "";
+}
+
 document.getElementById("ispaForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!SCRIPT_URL){
@@ -1265,6 +1388,8 @@ document.getElementById("ispaForm").addEventListener("submit", async (e) => {
   }
 
   const puskesmasTerpilih = document.getElementById("fPuskesmas").value;
+  const kecamatanTerpilih = document.getElementById("fKecamatan").value;
+  const tanggalTerpilih = document.getElementById("fTanggal").value;
   const pinInput = document.getElementById("fPin").value.trim();
 
   if (!verifiedPuskesmas[puskesmasTerpilih]){
@@ -1283,33 +1408,68 @@ document.getElementById("ispaForm").addEventListener("submit", async (e) => {
     }
   }
 
+  // Cek ulang (data mungkin berubah sejak terakhir dicek) sebelum submit final
+  await cekDataHariIni();
+
+  if (existingRecordInfo && existingRecordInfo.exists){
+    showModal(
+      "Data Sudah Pernah Diinput",
+      `Laporan untuk <strong>${puskesmasTerpilih}</strong> tanggal <strong>${tanggalTerpilih}</strong> sudah tersimpan sebelumnya
+       (Kasus ISPA: ${existingRecordInfo.data.jumlah}, Rawat Inap: ${existingRecordInfo.data.rawatInap}).<br><br>
+       Apakah data baru ini untuk <strong>memperbarui/menimpa</strong> laporan lama tersebut? Ini mencegah data dobel.`,
+      [
+        { label: "✔ Ya, Update Data Lama", onClick: () => simpanIspaFinal("update", existingRecordInfo.rowIndex) },
+        { label: "Batal", secondary: true, onClick: () => setStatus("formStatus", "Dibatalkan — data tidak disimpan.", "") },
+      ]
+    );
+    return;
+  }
+
+  await simpanIspaFinal("create", null);
+});
+
+async function simpanIspaFinal(mode, rowIndex){
+  const puskesmasTerpilih = document.getElementById("fPuskesmas").value;
+  const kecamatanTerpilih = document.getElementById("fKecamatan").value;
+  const tanggalTerpilih = document.getElementById("fTanggal").value;
+  const jumlah = document.getElementById("fJumlah").value;
+  const rawatInap = document.getElementById("fRawatInap").value;
+  const dirujuk = document.getElementById("fDirujuk").value;
+  const kondisi = document.getElementById("fKondisiKarhutla").value;
+  const catatan = document.getElementById("fCatatan").value;
+
   const payload = {
     action: "simpan_ispa",
-    tanggal: document.getElementById("fTanggal").value,
-    kecamatan: document.getElementById("fKecamatan").value,
+    tanggal: tanggalTerpilih,
+    kecamatan: kecamatanTerpilih,
     puskesmas: puskesmasTerpilih,
-    jumlah: document.getElementById("fJumlah").value,
-    rawatInap: document.getElementById("fRawatInap").value,
-    dirujuk: document.getElementById("fDirujuk").value,
-    kondisi: document.getElementById("fKondisiKarhutla").value,
-    catatan: document.getElementById("fCatatan").value
+    jumlah, rawatInap, dirujuk, kondisi, catatan,
+    mode, rowIndex
   };
+  setStatus("formStatus", "Menyimpan...", "");
   try{
-    await fetch(SCRIPT_URL, {
+    const res = await fetch(SCRIPT_URL, {
       method: "POST",
       headers: {"Content-Type": "text/plain"},
       body: JSON.stringify(payload)
     });
-    setStatus("formStatus", "Laporan tersimpan.", "ok");
+    const jamSekarang = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+    document.getElementById("formStatus").innerHTML = `
+      <div class="save-confirm">
+        <strong>✔ Laporan ${mode === "update" ? "berhasil diperbarui" : "berhasil disimpan"}</strong>
+        ${puskesmasTerpilih} — ${tanggalTerpilih}, pukul ${jamSekarang}<br>
+        Kasus ISPA: <strong>${jumlah}</strong> · Rawat Inap: <strong>${rawatInap}</strong> · Dirujuk: <strong>${dirujuk}</strong> · Kondisi Karhutla: <strong>${kondisi}</strong>
+      </div>`;
     document.getElementById("fJumlah").value = "";
     document.getElementById("fRawatInap").value = "0";
     document.getElementById("fDirujuk").value = "Tidak";
     document.getElementById("fCatatan").value = "";
     await refreshAll();
+    await cekDataHariIni();
   } catch(err){
     setStatus("formStatus", "Gagal menyimpan: " + err.message, "err");
   }
-});
+}
 
 /* ======================================================
    10. FORM SUBMIT: NILAI ISPU MANUAL
