@@ -66,7 +66,7 @@
     grid-template-columns: 1.3fr 1fr;
     gap:18px;
     padding:18px;
-    max-width:1500px;
+    max-width:1900px;
     margin:0 auto;
   }
   @media (max-width: 980px){
@@ -76,7 +76,7 @@
   .tabnav{
     display:flex;
     gap:8px;
-    max-width:1500px;
+    max-width:1900px;
     margin:16px auto 0;
     padding:0 18px;
   }
@@ -128,7 +128,7 @@
   }
 
   #map{
-    height:460px;
+    height:540px;
     border-radius:var(--radius);
     border:1px solid var(--line);
   }
@@ -373,7 +373,10 @@
         Sejak Agustus 2026, Kabupaten Kapuas sudah punya <strong>1 stasiun AQMS resmi KLHK</strong> (lokasi: Kel. Selat Hulu, Kec. Selat) — kecamatan Selat kini otomatis memakai data ISPU RESMI dari stasiun tersebut, diperbarui otomatis. Untuk 16 kecamatan lainnya (belum ada stasiun), nilai ISPU tetap <em>estimasi</em>, dihitung dari jumlah titik panas (hotspot) NASA FIRMS ditambah nilai dasar PM2.5 regional — gunakan sebagai indikator dini, bukan pengganti pengukuran resmi. Titik oranye kecil menandakan lokasi hotspot individual yang terdeteksi satelit dalam 2 hari terakhir.
       </div>
     </div>
+  </div>
 
+  <!-- KOLOM KANAN: REKAP HARIAN -->
+  <div>
     <div class="panel">
       <h2>Rekap Harian per Kecamatan</h2>
       <div class="stat-row">
@@ -399,7 +402,13 @@
       </div>
       <div id="refreshStatus" class="status-msg"></div>
     </div>
+  </div>
 
+</div>
+
+<div class="layout" id="dashboardRow2">
+
+  <div>
     <div class="panel">
       <h2>Tren &amp; Rekap Kasus ISPA</h2>
 
@@ -431,7 +440,9 @@
         <canvas id="kecamatanBarChart"></canvas>
       </div>
     </div>
+  </div>
 
+  <div>
     <div class="panel">
       <h2>Rekap Per Periode <span class="hint">mis. untuk laporan 3-harian BPBD</span></h2>
       <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
@@ -465,7 +476,7 @@
   </div>
 
 </div>
-<!-- akhir dashboardView -->
+<!-- akhir dashboardView (2 baris x 2 kolom) -->
 
 <div class="layout" id="inputView" style="display:none;">
 
@@ -681,16 +692,19 @@
 ====================================================== */
 function showTab(tab){
   const dash = document.getElementById("dashboardView");
+  const dash2 = document.getElementById("dashboardRow2");
   const input = document.getElementById("inputView");
   const btnDash = document.getElementById("tabBtnDashboard");
   const btnInput = document.getElementById("tabBtnInput");
   if (tab === "dashboard"){
     dash.style.display = "grid";
+    dash2.style.display = "grid";
     input.style.display = "none";
     btnDash.classList.add("active");
     btnInput.classList.remove("active");
   } else {
     dash.style.display = "none";
+    dash2.style.display = "none";
     input.style.display = "grid";
     btnInput.classList.add("active");
     btnDash.classList.remove("active");
