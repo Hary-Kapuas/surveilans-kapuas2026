@@ -933,9 +933,10 @@ function tampilkanDetailISPUResmi(namaKec){
     </div>
   ` : "";
 
+  const bersihkanAngka = (v) => (v === null || v === undefined) ? "-" : String(v).replace(/^[A-Za-z]+:\s*/, "");
   const ringkasanPM25 = o.pm25Ringkasan ? `
     <p style="font-size:0.78rem; color:var(--muted); margin-top:10px;">
-      ISPU PM2.5 24 jam terakhir — Maks: <strong>${o.pm25Ringkasan.max}</strong>, Min: <strong>${o.pm25Ringkasan.min}</strong>, Rata-rata: <strong>${o.pm25Ringkasan.avg}</strong>
+      ISPU PM2.5 24 jam terakhir — Maks: <strong>${bersihkanAngka(o.pm25Ringkasan.max)}</strong>, Min: <strong>${bersihkanAngka(o.pm25Ringkasan.min)}</strong>, Rata-rata: <strong>${bersihkanAngka(o.pm25Ringkasan.avg)}</strong>
     </p>
   ` : "";
 
