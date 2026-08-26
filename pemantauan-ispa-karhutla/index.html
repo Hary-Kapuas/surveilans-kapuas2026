@@ -1705,7 +1705,37 @@ async function refreshAll(){
   autoIsiLaporanProvinsi();
 }
 
+/* ======================================================
+   0a. MODE TAMPILAN PUBLIK (?public=1 di URL)
+   Untuk disematkan (iframe) ke situs resmi Dinkes — hanya
+   menampilkan Dashboard, tab & form Input Data disembunyikan
+   sepenuhnya supaya publik tidak melihat form internal staf.
+====================================================== */
+function terapkanModePublik(){
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("public") !== "1") return false;
+
+  // Sembunyikan tab "Input Data" total, kunci tampilan ke Dashboard saja.
+  // Elemen-elemennya TETAP ADA di halaman (cuma disembunyikan via CSS),
+  // karena beberapa logika Dashboard (mis. tanggal aktif) masih membaca
+  // nilai default dari field-field di form input tsb.
+  const btnInput = document.getElementById("tabBtnInput");
+  if (btnInput) btnInput.style.display = "none";
+  const inputView = document.getElementById("inputView");
+  if (inputView){
+    inputView.style.display = "none";
+    inputView.style.position = "absolute";
+    inputView.style.left = "-9999px";
+    inputView.setAttribute("aria-hidden", "true");
+  }
+
+  document.title = "Pemantauan ISPA & Karhutla — Dinas Kesehatan Kabupaten Kapuas";
+  return true;
+}
+
 function init(){
+  const modePublik = terapkanModePublik();
+
   const todayStr = new Date().toISOString().slice(0,10);
   document.getElementById("fTanggal").value = todayStr;
   document.getElementById("todayLabel").textContent = new Date().toLocaleDateString('id-ID', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
@@ -1722,7 +1752,9 @@ function init(){
   document.getElementById("periodeMulai").value = awalBulan.toISOString().slice(0,10);
 
   fillKecamatanSelects();
-  fillPuskesmasSelect(document.getElementById("fKecamatan").value);
+  if (!modePublik){
+    fillPuskesmasSelect(document.getElementById("fKecamatan").value);
+  }
   initMarkers();
   refreshAll();
   document.getElementById("fTanggal").addEventListener("change", refreshAll);
