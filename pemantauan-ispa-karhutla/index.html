@@ -6,9 +6,6 @@
 <title>Pemantauan ISPA & Karhutla — Kabupaten Kapuas</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
   :root{
@@ -360,9 +357,6 @@
   <div>
     <div class="panel">
       <h2>Peta Status per Kecamatan <span class="hint">warna = estimasi kategori ISPU</span></h2>
-      <div class="btn-row" style="margin-bottom:10px;">
-        <button type="button" class="btn secondary" onclick="fokusKeKapuas()">🎯 Fokus ke Kapuas</button>
-      </div>
       <div id="map"></div>
       <label style="display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--muted); margin-top:10px;">
         <input type="checkbox" id="toggleHotspotPoints" checked onchange="toggleHotspotPoints()">
@@ -376,7 +370,6 @@
         <span><i style="background:var(--berbahaya)"></i> Berbahaya (&gt;300)</span>
         <span><i style="background:#999"></i> Belum ada data</span>
         <span><i style="background:#ff4500; width:7px; height:7px;"></i> Titik hotspot (FIRMS)</span>
-        <span style="color:var(--muted); font-size:0.72rem;">(bulatan berangka = beberapa titik berdekatan, dikelompokkan otomatis saat zoom out — zoom in untuk lihat titik individual)</span>
       </div>
       <div class="banner">
         <strong>Catatan penting soal data ISPU</strong>
@@ -815,10 +808,6 @@ let markers = {};
 // preferCanvas: true -> render titik pakai Canvas (bukan SVG satu-satu),
 // jauh lebih ringan saat titik hotspot bisa ribuan (cakupan seluruh Indonesia)
 const map = L.map('map', { preferCanvas: true }).setView([-2.0, 114.3], 7);
-
-function fokusKeKapuas(){
-  map.setView([-2.0, 114.3], 7);
-}
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors',
   maxZoom: 13
@@ -1102,25 +1091,7 @@ function renderHotspotPoints(){
   if (hotspotLayerGroup){
     map.removeLayer(hotspotLayerGroup);
   }
-  // markerClusterGroup: titik yang berdekatan (secara visual di layar, saat
-  // zoom out) dikelompokkan jadi satu bulatan dengan angka jumlahnya —
-  // begitu di-zoom in, otomatis pecah jadi titik individual yang presisi.
-  // disableClusteringAtZoom: mulai zoom ini ke atas, semua titik ditampilkan
-  // individual (tidak dikelompokkan lagi) karena sudah cukup renggang.
-  hotspotLayerGroup = L.markerClusterGroup({
-    maxClusterRadius: 45,
-    disableClusteringAtZoom: 11,
-    spiderfyOnMaxZoom: false,
-    iconCreateFunction: function(cluster){
-      const count = cluster.getChildCount();
-      const size = count < 20 ? 30 : count < 100 ? 38 : 46;
-      return L.divIcon({
-        html: `<div style="background:#ff4500; color:#fff; border-radius:50%; width:${size}px; height:${size}px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:${count<100?'0.8rem':'0.7rem'}; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,0.4);">${count}</div>`,
-        className: "",
-        iconSize: L.point(size, size)
-      });
-    }
-  });
+  hotspotLayerGroup = L.layerGroup();
 
   hotspotPoints.forEach(p => {
     const dot = L.circleMarker([p.lat, p.lng], {
