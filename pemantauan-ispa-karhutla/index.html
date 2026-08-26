@@ -267,11 +267,14 @@
   }
   .modal-box{
     background:#fff; border-radius:10px; padding:24px;
-    max-width:440px; width:90%;
+    max-width:520px; width:92%;
+    max-height:85vh; overflow-y:auto;
     box-shadow:0 10px 40px rgba(0,0,0,0.3);
   }
   .modal-box h3{margin:0 0 10px; color:var(--teal-dark); font-size:1.1rem;}
   .modal-box p{font-size:0.88rem; line-height:1.5; color:var(--ink);}
+  .modal-box .modal-body{font-size:0.88rem; line-height:1.5; color:var(--ink);}
+  .modal-box .modal-body table{width:100%; font-size:0.85rem;}
   .modal-box .btn-row{margin-top:16px;}
 
   .save-confirm{
@@ -879,12 +882,83 @@ function updateMarkers(){
     let infoTambahan = "";
     if (sumber === "resmi"){
       const o = officialISPU[k.nama];
-      infoTambahan = `<br>Kategori KLHK: ${o.kategori}<br>Parameter kritis: ${o.parameterKritis}<br>Update terakhir: ${o.waktu}`;
+      infoTambahan = `<br>Kategori KLHK: ${o.kategori}<br>Parameter kritis: ${o.parameterKritis}<br>Update terakhir: ${o.waktu}` +
+        `<br><a href="#" onclick="tampilkanDetailISPUResmi('${k.nama}'); return false;" style="color:var(--teal); font-weight:600;">📊 Lihat Detail Lengkap →</a>`;
     }
     markers[k.nama].bindPopup(
       `<strong>${k.nama}</strong><br>Status: ${st.label} (${labelSumber})${infoTambahan}<br>Hotspot 24 jam: ${hs}<br>Kasus ISPA hari ini: ${kasus}`
     );
   });
+}
+
+/* ======================================================
+   4a. MODAL DETAIL LENGKAP DATA ISPU RESMI (mirip situs KLHK)
+====================================================== */
+function kategoriWarna(label){
+  const l = (label || "").toUpperCase();
+  if (l.includes("BERBAHAYA")) return "#5a1f2b";
+  if (l.includes("SANGAT TIDAK SEHAT")) return "#c9542f";
+  if (l.includes("TIDAK SEHAT")) return "#d9a53a";
+  if (l.includes("SEDANG")) return "#4f8fbf";
+  if (l.includes("BAIK")) return "#3f8f5f";
+  return "#999";
+}
+
+function tampilkanDetailISPUResmi(namaKec){
+  const o = officialISPU[namaKec];
+  if (!o) return;
+
+  const parts = [
+    ["PM10", o.subIndeks?.pm10, o.konsentrasi?.pm10, "µg/m³"],
+    ["PM2.5", o.subIndeks?.pm25, o.konsentrasi?.pm25, "µg/m³"],
+    ["SO2", o.subIndeks?.so2, o.konsentrasi?.so2, "µg/m³"],
+    ["CO", o.subIndeks?.co, o.konsentrasi?.co, "µg/m³"],
+    ["O3", o.subIndeks?.o3, o.konsentrasi?.o3, "µg/m³"],
+    ["NO2", o.subIndeks?.no2, o.konsentrasi?.no2, "µg/m³"],
+  ];
+
+  const tabelParameter = parts.map(([nama, sub, kons, satuan]) => `
+    <tr>
+      <td style="font-weight:600;">${nama}</td>
+      <td><span class="status-pill" style="background:${kategoriWarna(o.kategori)}; opacity:${sub===null||sub===undefined ? 0.3 : 1};">${sub ?? "-"}</span></td>
+      <td>${kons ?? "-"} ${kons!==undefined && kons!==null ? satuan : ""}</td>
+    </tr>
+  `).join("");
+
+  const cuacaHtml = o.cuaca ? `
+    <div class="stat-row" style="margin-top:14px;">
+      <div class="stat-card"><div class="num" style="font-size:1.1rem;">${o.cuaca.suhu ?? "-"}°C</div><div class="lbl">Suhu</div></div>
+      <div class="stat-card"><div class="num" style="font-size:1.1rem;">${o.cuaca.kelembaban ?? "-"}%</div><div class="lbl">Kelembaban</div></div>
+      <div class="stat-card"><div class="num" style="font-size:1.1rem;">${o.cuaca.tekananUdara ?? "-"}</div><div class="lbl">Tekanan (mBar)</div></div>
+    </div>
+  ` : "";
+
+  const ringkasanPM25 = o.pm25Ringkasan ? `
+    <p style="font-size:0.78rem; color:var(--muted); margin-top:10px;">
+      ISPU PM2.5 24 jam terakhir — Maks: <strong>${o.pm25Ringkasan.max}</strong>, Min: <strong>${o.pm25Ringkasan.min}</strong>, Rata-rata: <strong>${o.pm25Ringkasan.avg}</strong>
+    </p>
+  ` : "";
+
+  const html = `
+    <div style="text-align:center; margin-bottom:16px;">
+      <div style="display:inline-block; width:90px; height:90px; border-radius:50%; background:${kategoriWarna(o.kategori)}; color:#fff; font-size:2rem; font-weight:700; line-height:90px;">${o.ispu ?? "-"}</div>
+      <div style="font-size:1.1rem; font-weight:700; margin-top:8px; color:${kategoriWarna(o.kategori)};">${o.kategori || "-"}</div>
+      <div style="font-size:0.8rem; color:var(--muted);">Parameter kritis: <strong>${o.parameterKritis}</strong> · Update: ${o.waktu}</div>
+    </div>
+    <table style="width:100%;">
+      <thead><tr><th>Parameter</th><th>Sub-Indeks ISPU</th><th>Konsentrasi</th></tr></thead>
+      <tbody>${tabelParameter}</tbody>
+    </table>
+    ${ringkasanPM25}
+    ${cuacaHtml}
+    <p style="font-size:0.72rem; color:var(--muted); margin-top:14px; text-align:center;">
+      Sumber: Stasiun AQMS resmi KLHK, Kel. Selat Hulu, Kec. Selat — <a href="https://ispu.kemenlh.go.id/internal/web/site/stasiun/KABUPATEN_KAPUAS" target="_blank" style="color:var(--teal);">Lihat langsung di situs KLHK ↗</a>
+    </p>
+  `;
+
+  showModal(`Detail Kualitas Udara — Kecamatan ${namaKec}`, html, [
+    { label: "Tutup", secondary: true, onClick: () => {} }
+  ]);
 }
 
 /* ======================================================
@@ -1399,7 +1473,7 @@ function showModal(title, message, buttons){
     <div class="modal-overlay" id="modalOverlay">
       <div class="modal-box">
         <h3>${title}</h3>
-        <p>${message}</p>
+        <div class="modal-body">${message}</div>
         <div class="btn-row">${btnHtml}</div>
       </div>
     </div>
