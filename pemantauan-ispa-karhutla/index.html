@@ -357,6 +357,9 @@
   <div>
     <div class="panel">
       <h2>Peta Status per Kecamatan <span class="hint">warna = estimasi kategori ISPU</span></h2>
+      <div class="btn-row" style="margin-bottom:10px;">
+        <button type="button" class="btn secondary" onclick="fokusKeKapuas()">🎯 Fokus ke Kapuas</button>
+      </div>
       <div id="map"></div>
       <label style="display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--muted); margin-top:10px;">
         <input type="checkbox" id="toggleHotspotPoints" checked onchange="toggleHotspotPoints()">
@@ -724,12 +727,12 @@ const KECAMATAN = [
   { nama: "Kapuas Murung",    ibukota: "Puskesmas Palingkau (Palingkau Baru)",lat: -2.8443945379370317, lng: 114.51901712107149 },
   { nama: "Dadahup",          ibukota: "Puskesmas Dadahup",                   lat: -2.657557947618682,  lng: 114.60079427874119 },
   { nama: "Kapuas Barat",     ibukota: "Puskesmas Mandomai",                  lat: -2.8202330436952314, lng: 114.35338522107135 },
-  { nama: "Mantangai",        ibukota: "Puskesmas Mantangai (Mantangai Hilir)",lat: -2.5120165269517845,lng: 114.49372029408275 },
-  { nama: "Timpah",           ibukota: "Puskesmas Timpah",                    lat: -1.7203323702649955, lng: 114.47940519407648 },
-  { nama: "Kapuas Tengah",    ibukota: "Puskesmas Pujon",                     lat: -1.348785433095912,  lng: 114.3672342364024 },
-  { nama: "Pasak Talawang",   ibukota: "Puskesmas Jangkang",                  lat: -1.1585436458994687, lng: 114.19835472290838 },
-  { nama: "Kapuas Hulu",      ibukota: "Puskesmas Sei Hanyo",                 lat: -0.9316171781177287, lng: 114.02278356523557 },
-  { nama: "Mandau Talawang",  ibukota: "Puskesmas Sei Pinang",                lat: -0.78047852591554,   lng: 114.05142657872754 },
+  { nama: "Mantangai",        ibukota: "Puskesmas Mantangai (Mantangai Hilir)",lat: -2.5122309,          lng: 114.4911454 },
+  { nama: "Timpah",           ibukota: "Puskesmas Timpah",                    lat: -1.7205629,          lng: 114.4768303 },
+  { nama: "Kapuas Tengah",    ibukota: "Puskesmas Pujon",                     lat: -1.3489731,          lng: 114.3646808 },
+  { nama: "Pasak Talawang",   ibukota: "Puskesmas Jangkang",                  lat: -1.158758,           lng: 114.198318 },
+  { nama: "Kapuas Hulu",      ibukota: "Puskesmas Sei Hanyo",                 lat: -0.9318156,          lng: 114.0202194 },
+  { nama: "Mandau Talawang",  ibukota: "Puskesmas Sei Pinang",                lat: -0.7806555,          lng: 114.0488946 },
 ];
 
 // Radius (km) untuk menghitung hotspot "di sekitar" tiap kecamatan
@@ -805,7 +808,13 @@ let markers = {};
 /* ======================================================
    4. PETA
 ====================================================== */
-const map = L.map('map').setView([-2.0, 114.3], 7);
+// preferCanvas: true -> render titik pakai Canvas (bukan SVG satu-satu),
+// jauh lebih ringan saat titik hotspot bisa ribuan (cakupan seluruh Indonesia)
+const map = L.map('map', { preferCanvas: true }).setView([-2.0, 114.3], 7);
+
+function fokusKeKapuas(){
+  map.setView([-2.0, 114.3], 7);
+}
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors',
   maxZoom: 13
