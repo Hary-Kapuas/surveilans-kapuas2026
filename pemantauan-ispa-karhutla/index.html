@@ -7,6 +7,9 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --ink:#12303a;
@@ -402,10 +405,24 @@
         <option value="ALL">Semua Kecamatan (Total)</option>
       </select>
       <canvas id="trendChart"></canvas>
+      <div class="btn-row" style="margin-top:10px;">
+        <button type="button" class="btn secondary" onclick="downloadChartJPG('trendChart','tren-kasus-ispa')">⬇ JPG</button>
+        <button type="button" class="btn secondary" onclick="downloadChartPDF('trendChart','Tren Kasus ISPA')">⬇ PDF</button>
+      </div>
 
       <div style="margin-top:22px; border-top:1px solid var(--line); padding-top:16px;">
-        <label style="font-size:0.75rem; color:var(--muted); font-weight:600; display:block; margin-bottom:8px;">Total Kasus ISPA per Kecamatan (rentang tanggal di atas):</label>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+          <label style="font-size:0.75rem; color:var(--muted); font-weight:600;">Total Kasus ISPA per <span id="barChartLevelLabel">Kecamatan</span> (rentang tanggal di atas):</label>
+          <select id="barChartLevel" style="padding:6px 9px; border:1px solid var(--line); border-radius:6px; font-size:0.8rem; background:#fbfaf6;" onchange="renderKecamatanBarChart()">
+            <option value="kecamatan">Per Kecamatan</option>
+            <option value="puskesmas">Per Puskesmas/Faskes</option>
+          </select>
+        </div>
         <canvas id="kecamatanBarChart"></canvas>
+        <div class="btn-row" style="margin-top:10px;">
+          <button type="button" class="btn secondary" onclick="downloadChartJPG('kecamatanBarChart','kasus-per-wilayah')">⬇ JPG</button>
+          <button type="button" class="btn secondary" onclick="downloadChartPDF('kecamatanBarChart','Total Kasus ISPA')">⬇ PDF</button>
+        </div>
       </div>
     </div>
   </div>
@@ -413,16 +430,21 @@
   <!-- KOLOM KANAN: REKAP HARIAN + REKAP PER PERIODE -->
   <div>
     <div class="panel">
-      <h2>Rekap Harian per Kecamatan</h2>
+      <h2>Rekap Harian <span class="hint" id="recapHarianHint">per Kecamatan</span></h2>
       <div class="stat-row">
         <div class="stat-card"><div class="num" id="statTotalKasus">0</div><div class="lbl">Kasus ISPA Hari Ini</div></div>
         <div class="stat-card"><div class="num" id="statTotalHotspot">0</div><div class="lbl">Hotspot Terdeteksi</div></div>
         <div class="stat-card"><div class="num" id="statKecTerdampak">0</div><div class="lbl">Kecamatan Tidak Sehat+</div></div>
       </div>
       <div id="missingKecamatanBanner" style="display:none;"></div>
+      <label style="font-size:0.72rem; color:var(--muted); font-weight:600;">Tampilkan per:</label>
+      <select id="recapLevel" style="padding:7px 9px; border:1px solid var(--line); border-radius:6px; font-size:0.85rem; width:100%; margin-bottom:10px; background:#fbfaf6;" onchange="renderRecapTable()">
+        <option value="kecamatan">Kecamatan</option>
+        <option value="puskesmas">Puskesmas/Faskes Pelapor</option>
+      </select>
       <table id="recapTable">
         <thead>
-          <tr>
+          <tr id="recapTableHead">
             <th>Kecamatan</th>
             <th>Status ISPU (est.)</th>
             <th>Hotspot 24 jam</th>
@@ -433,7 +455,9 @@
       </table>
       <div class="btn-row" style="margin-top:12px;">
         <button class="btn secondary" onclick="refreshAll()">↻ Muat Ulang Data</button>
-        <button class="btn secondary" onclick="exportCSV()">⬇ Ekspor Rekap (CSV)</button>
+        <button class="btn secondary" onclick="exportCSV()">⬇ CSV</button>
+        <button class="btn secondary" onclick="exportRecapExcel()">⬇ Excel</button>
+        <button class="btn secondary" onclick="exportRecapPDF()">⬇ PDF</button>
       </div>
       <div id="refreshStatus" class="status-msg"></div>
     </div>
@@ -459,7 +483,9 @@
       </div>
       <div class="btn-row" style="margin-bottom:12px;">
         <button type="button" class="btn secondary" onclick="renderRekapPeriode()">↻ Tampilkan Rekap</button>
-        <button type="button" class="btn secondary" onclick="exportRekapPeriodeCSV()">⬇ Ekspor CSV</button>
+        <button type="button" class="btn secondary" onclick="exportRekapPeriodeCSV()">⬇ CSV</button>
+        <button type="button" class="btn secondary" onclick="exportRekapPeriodeExcel()">⬇ Excel</button>
+        <button type="button" class="btn secondary" onclick="exportRekapPeriodePDF()">⬇ PDF</button>
       </div>
       <div style="overflow-x:auto;">
         <table id="rekapPeriodeTable">
@@ -933,10 +959,9 @@ function tampilkanDetailISPUResmi(namaKec){
     </div>
   ` : "";
 
-  const bersihkanAngka = (v) => (v === null || v === undefined) ? "-" : String(v).replace(/^[A-Za-z]+:\s*/, "");
   const ringkasanPM25 = o.pm25Ringkasan ? `
     <p style="font-size:0.78rem; color:var(--muted); margin-top:10px;">
-      ISPU PM2.5 24 jam terakhir — Maks: <strong>${bersihkanAngka(o.pm25Ringkasan.max)}</strong>, Min: <strong>${bersihkanAngka(o.pm25Ringkasan.min)}</strong>, Rata-rata: <strong>${bersihkanAngka(o.pm25Ringkasan.avg)}</strong>
+      ISPU PM2.5 24 jam terakhir — Maks: <strong>${o.pm25Ringkasan.max}</strong>, Min: <strong>${o.pm25Ringkasan.min}</strong>, Rata-rata: <strong>${o.pm25Ringkasan.avg}</strong>
     </p>
   ` : "";
 
@@ -1181,6 +1206,17 @@ function computeKecamatanTotals(startDate, endDate){
   return totals;
 }
 
+function computePuskesmasTotals(startDate, endDate){
+  const totals = {};
+  PUSKESMAS.forEach(p => totals[p.nama] = 0);
+  allRecords.forEach(r => {
+    if (r.tanggal < startDate || r.tanggal > endDate) return;
+    if (totals[r.puskesmas] === undefined) totals[r.puskesmas] = 0;
+    totals[r.puskesmas] += Number(r.jumlah || 0);
+  });
+  return totals;
+}
+
 /* ======================================================
    8a. CEK KECAMATAN YANG BELUM LAPOR HARI INI
 ====================================================== */
@@ -1229,29 +1265,67 @@ function updateMissingKecamatanWarning(){
 /* ======================================================
    9. RENDER TABEL, STATISTIK, DAN CHART
 ====================================================== */
+let lastRecapTableData = { level: "kecamatan", headers: [], rows: [] }; // dipakai untuk ekspor Excel/PDF
+
 function renderRecapTable(){
+  const level = document.getElementById("recapLevel").value;
+  document.getElementById("recapHarianHint").textContent = level === "puskesmas" ? "per Puskesmas/Faskes Pelapor" : "per Kecamatan";
+
   const tbody = document.querySelector("#recapTable tbody");
+  const thead = document.getElementById("recapTableHead");
   tbody.innerHTML = "";
   let totalKasus = 0, totalHotspot = 0, kecTerdampak = 0;
+  const exportRows = [];
 
-  KECAMATAN.forEach(k => {
-    const score = computeScore(k.nama);
-    const st = statusFromScore(score);
-    const hs = hotspotCounts[k.nama] ?? "-";
-    const kasus = kasusHariIni[k.nama] ?? 0;
-    totalKasus += kasus;
-    if (typeof hs === "number") totalHotspot += hs;
-    if (score !== null && score > 100) kecTerdampak++;
+  if (level === "puskesmas"){
+    thead.innerHTML = `<th>Puskesmas/Faskes</th><th>Kecamatan</th><th>Status ISPU Kecamatan (est.)</th><th>Kasus ISPA hari ini</th>`;
+    PUSKESMAS.forEach(p => {
+      const score = computeScore(p.kecamatan);
+      const st = statusFromScore(score);
+      const kasus = laporanPuskesmasHariIni[p.nama] ?? 0;
+      totalKasus += kasus;
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${k.nama}</td>
-      <td><span class="status-pill" style="background:${st.color}">${st.label}</span></td>
-      <td>${hs}</td>
-      <td>${kasus}</td>
-    `;
-    tbody.appendChild(tr);
-  });
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${p.nama}</td>
+        <td>${p.kecamatan}</td>
+        <td><span class="status-pill" style="background:${st.color}">${st.label}</span></td>
+        <td>${kasus}</td>
+      `;
+      tbody.appendChild(tr);
+      exportRows.push([p.nama, p.kecamatan, st.label, kasus]);
+    });
+    // Hotspot & kecamatan terdampak tetap dihitung dari sisi kecamatan supaya statistik atas tetap konsisten
+    KECAMATAN.forEach(k => {
+      const hs = hotspotCounts[k.nama];
+      const score = computeScore(k.nama);
+      if (typeof hs === "number") totalHotspot += hs;
+      if (score !== null && score > 100) kecTerdampak++;
+    });
+    lastRecapTableData = { level, headers: ["Puskesmas/Faskes","Kecamatan","Status ISPU Kecamatan (est.)","Kasus ISPA hari ini"], rows: exportRows };
+  } else {
+    thead.innerHTML = `<th>Kecamatan</th><th>Status ISPU (est.)</th><th>Hotspot 24 jam</th><th>Kasus ISPA hari ini</th>`;
+    KECAMATAN.forEach(k => {
+      const score = computeScore(k.nama);
+      const st = statusFromScore(score);
+      const hs = hotspotCounts[k.nama] ?? "-";
+      const kasus = kasusHariIni[k.nama] ?? 0;
+      totalKasus += kasus;
+      if (typeof hs === "number") totalHotspot += hs;
+      if (score !== null && score > 100) kecTerdampak++;
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${k.nama}</td>
+        <td><span class="status-pill" style="background:${st.color}">${st.label}</span></td>
+        <td>${hs}</td>
+        <td>${kasus}</td>
+      `;
+      tbody.appendChild(tr);
+      exportRows.push([k.nama, st.label, hs, kasus]);
+    });
+    lastRecapTableData = { level, headers: ["Kecamatan","Status ISPU (est.)","Hotspot 24 jam","Kasus ISPA hari ini"], rows: exportRows };
+  }
 
   document.getElementById("statTotalKasus").textContent = totalKasus;
   document.getElementById("statTotalHotspot").textContent = totalHotspot;
@@ -1309,8 +1383,12 @@ function renderKecamatanBarChart(){
   const endDate = document.getElementById("trendSampai").value;
   if (!startDate || !endDate) return;
 
-  const totals = computeKecamatanTotals(startDate, endDate);
-  const sorted = KECAMATAN.map(k => k.nama).sort((a,b) => totals[b] - totals[a]);
+  const level = document.getElementById("barChartLevel").value;
+  document.getElementById("barChartLevelLabel").textContent = level === "puskesmas" ? "Puskesmas/Faskes" : "Kecamatan";
+
+  const totals = level === "puskesmas" ? computePuskesmasTotals(startDate, endDate) : computeKecamatanTotals(startDate, endDate);
+  const namaEntitas = level === "puskesmas" ? PUSKESMAS.map(p => p.nama) : KECAMATAN.map(k => k.nama);
+  const sorted = namaEntitas.slice().sort((a,b) => totals[b] - totals[a]);
 
   const ctx = document.getElementById("kecamatanBarChart");
   if (kecamatanBarChart) kecamatanBarChart.destroy();
@@ -1452,6 +1530,46 @@ function exportRekapPeriodeCSV(){
   a.href = url;
   a.download = `rekap-periode-ispa-kapuas.csv`;
   a.click();
+}
+
+function _rekapPeriodeHeadersRows(){
+  if (!lastRekapPeriodeData) renderRekapPeriode();
+  const level = lastRekapPeriodeData.level;
+  const headers = level === "puskesmas"
+    ? ["Periode","Puskesmas","Kecamatan","Kasus ISPA","Rawat Inap","Dirujuk","Fasyankes Lapor","Kondisi Karhutla Terparah"]
+    : ["Periode","Kecamatan","Kasus ISPA","Rawat Inap","Dirujuk","Fasyankes Lapor","Kondisi Karhutla Terparah"];
+  const rows = lastRekapPeriodeData.rows.map(row =>
+    level === "puskesmas" ? row : [row[0], row[1], row[3], row[4], row[5], row[6], row[7]]
+  );
+  return { level, headers, rows };
+}
+
+function exportRekapPeriodeExcel(){
+  if (typeof XLSX === "undefined"){ alert("Library Excel belum siap termuat, coba lagi sebentar."); return; }
+  const { headers, rows } = _rekapPeriodeHeadersRows();
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Rekap Periode");
+  XLSX.writeFile(wb, `rekap-periode-ispa-kapuas.xlsx`);
+}
+
+function exportRekapPeriodePDF(){
+  if (typeof window.jspdf === "undefined"){ alert("Library PDF belum siap termuat, coba lagi sebentar."); return; }
+  const { level, headers, rows } = _rekapPeriodeHeadersRows();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape" });
+  doc.setFontSize(14);
+  doc.text(`Rekap Per Periode — ${level === "puskesmas" ? "per Puskesmas/Faskes" : "per Kecamatan"}`, 14, 15);
+  doc.setFontSize(9);
+  doc.text(`Dinas Kesehatan Kabupaten Kapuas — diunduh ${new Date().toLocaleString('id-ID')}`, 14, 21);
+  doc.autoTable({
+    head: [headers],
+    body: rows,
+    startY: 26,
+    styles: { fontSize: 7.5 },
+    headStyles: { fillColor: [15, 92, 92] }
+  });
+  doc.save(`rekap-periode-ispa-kapuas.pdf`);
 }
 
 /* ======================================================
@@ -1742,20 +1860,68 @@ Nomor Telp/WA Pelapor: ${d.telp_pelapor || "-"}`;
    11. EKSPOR CSV
 ====================================================== */
 function exportCSV(){
-  let csv = "Kecamatan,Status ISPU (estimasi),Hotspot 24 jam,Kasus ISPA hari ini\n";
-  KECAMATAN.forEach(k => {
-    const score = computeScore(k.nama);
-    const st = statusFromScore(score);
-    const hs = hotspotCounts[k.nama] ?? "";
-    const kasus = kasusHariIni[k.nama] ?? 0;
-    csv += `${k.nama},${st.label},${hs},${kasus}\n`;
-  });
+  const level = lastRecapTableData.level;
+  let csv = lastRecapTableData.headers.join(",") + "\n";
+  lastRecapTableData.rows.forEach(row => { csv += row.map(v => `"${v}"`).join(",") + "\n"; });
   const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `rekap-ispa-karhutla-kapuas-${document.getElementById("fTanggal").value}.csv`;
+  a.download = `rekap-harian-ispa-${level}-${document.getElementById("fTanggal").value}.csv`;
   a.click();
+}
+
+function exportRecapExcel(){
+  if (typeof XLSX === "undefined"){ alert("Library Excel belum siap termuat, coba lagi sebentar."); return; }
+  const wsData = [lastRecapTableData.headers, ...lastRecapTableData.rows];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Rekap Harian");
+  XLSX.writeFile(wb, `rekap-harian-ispa-${lastRecapTableData.level}-${document.getElementById("fTanggal").value}.xlsx`);
+}
+
+function exportRecapPDF(){
+  if (typeof window.jspdf === "undefined"){ alert("Library PDF belum siap termuat, coba lagi sebentar."); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape" });
+  const judul = lastRecapTableData.level === "puskesmas" ? "Rekap Harian ISPA — per Puskesmas/Faskes Pelapor" : "Rekap Harian ISPA — per Kecamatan";
+  doc.setFontSize(14);
+  doc.text(judul, 14, 15);
+  doc.setFontSize(9);
+  doc.text(`Tanggal: ${document.getElementById("fTanggal").value} — Dinas Kesehatan Kabupaten Kapuas — diunduh ${new Date().toLocaleString('id-ID')}`, 14, 21);
+  doc.autoTable({
+    head: [lastRecapTableData.headers],
+    body: lastRecapTableData.rows,
+    startY: 26,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [15, 92, 92] }
+  });
+  doc.save(`rekap-harian-ispa-${lastRecapTableData.level}-${document.getElementById("fTanggal").value}.pdf`);
+}
+
+/* ---------------- UNDUH GRAFIK (JPG / PDF) — dipakai grafik mana pun via canvasId ---------------- */
+function downloadChartJPG(canvasId, filenameBase){
+  const chart = Chart.getChart(canvasId);
+  if (!chart){ alert("Grafik belum siap, coba muat ulang data dulu."); return; }
+  const link = document.createElement("a");
+  link.href = chart.toBase64Image("image/jpeg", 1.0);
+  link.download = `${filenameBase}-${new Date().toISOString().slice(0,10)}.jpg`;
+  link.click();
+}
+
+function downloadChartPDF(canvasId, judul){
+  if (typeof window.jspdf === "undefined"){ alert("Library PDF belum siap termuat, coba lagi sebentar."); return; }
+  const chart = Chart.getChart(canvasId);
+  if (!chart){ alert("Grafik belum siap, coba muat ulang data dulu."); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape" });
+  doc.setFontSize(14);
+  doc.text(judul, 14, 15);
+  doc.setFontSize(9);
+  doc.text(`Dinas Kesehatan Kabupaten Kapuas — diunduh ${new Date().toLocaleString('id-ID')}`, 14, 21);
+  const imgData = chart.toBase64Image("image/png", 1.0);
+  doc.addImage(imgData, "PNG", 14, 28, 260, 130);
+  doc.save(`${judul.replace(/\s+/g,'-').toLowerCase()}-${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
 /* ======================================================
