@@ -156,6 +156,26 @@
     background:#3367d6; color:#fff !important; border-radius:6px;
     text-decoration:none; font-weight:600; font-size:0.78rem;
   }
+  .wind-control{
+    background:#fff;
+    padding:9px 12px;
+    border-radius:8px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.3);
+    font-size:0.76rem;
+    line-height:1.4;
+    display:flex;
+    align-items:center;
+    gap:9px;
+    min-width:150px;
+  }
+  .wind-control .arrow{
+    font-size:1.5rem;
+    display:inline-block;
+    transition:transform 0.4s ease;
+    color:#0f5c5c;
+  }
+  .wind-control .txt b{ color:var(--ink,#222); }
+  .wind-control .txt .muted2{ color:#888; font-size:0.7rem; }
 
   .legend{
     display:flex;
@@ -387,6 +407,10 @@
       <label style="display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--muted); margin-top:10px;">
         <input type="checkbox" id="toggleHotspotPoints" checked onchange="toggleHotspotPoints()">
         Tampilkan titik sebaran hotspot individual (NASA FIRMS)
+      </label>
+      <label style="display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--muted); margin-top:6px;">
+        <input type="checkbox" id="toggleWind" onchange="toggleWind()">
+        Tampilkan arah &amp; kecepatan angin real-time
       </label>
       <div class="legend">
         <span><i style="background:var(--good)"></i> Baik (0–50)</span>
@@ -899,6 +923,69 @@ const BasemapControl = L.Control.extend({
   }
 });
 map.addControl(new BasemapControl());
+
+// Kontrol arah & kecepatan angin real-time (pojok kiri bawah), sumber: Open-Meteo
+// (gratis, tanpa API key). Dititikberatkan di tengah Kabupaten Kapuas — mewakili
+// kondisi angin regional, bukan per-kecamatan.
+const WIND_LAT = -2.0, WIND_LNG = 114.3;
+const ARAH_MATA_ANGIN = [
+  "Utara","Timur Laut","Timur","Tenggara",
+  "Selatan","Barat Daya","Barat","Barat Laut"
+];
+function labelArahAngin(deg){
+  const idx = Math.round(deg / 45) % 8;
+  return ARAH_MATA_ANGIN[idx];
+}
+
+const WindControl = L.Control.extend({
+  options: { position: 'bottomleft' },
+  onAdd: function(){
+    const div = L.DomUtil.create('div', 'wind-control');
+    div.id = "windControlBox";
+    div.innerHTML = `<span class="arrow" id="windArrow">↑</span><span class="txt" id="windTxt">Memuat data angin&hellip;</span>`;
+    L.DomEvent.disableClickPropagation(div);
+    return div;
+  }
+});
+const windControl = new WindControl();
+let windVisible = false;
+let windInterval = null;
+
+function toggleWind(){
+  windVisible = document.getElementById("toggleWind").checked;
+  if (windVisible){
+    map.addControl(windControl);
+    loadWindData();
+    if (!windInterval) windInterval = setInterval(loadWindData, 15 * 60 * 1000); // refresh tiap 15 menit
+  } else {
+    map.removeControl(windControl);
+    if (windInterval){ clearInterval(windInterval); windInterval = null; }
+  }
+}
+
+async function loadWindData(){
+  if (!windVisible) return;
+  try{
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${WIND_LAT}&longitude=${WIND_LNG}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh&timezone=Asia%2FJakarta`);
+    const data = await res.json();
+    const speed = data.current.wind_speed_10m;
+    const dariDeg = data.current.wind_direction_10m; // arah asal angin (konvensi meteorologi)
+    const menujuDeg = (dariDeg + 180) % 360;          // arah tujuan angin bertiup (untuk prediksi sebaran asap)
+    const dariLabel = labelArahAngin(dariDeg);
+    const menujuLabel = labelArahAngin(menujuDeg);
+
+    const arrowEl = document.getElementById("windArrow");
+    const txtEl = document.getElementById("windTxt");
+    if (arrowEl) arrowEl.style.transform = `rotate(${menujuDeg}deg)`;
+    if (txtEl){
+      txtEl.innerHTML = `Angin dari <b>${dariLabel}</b><br>menuju ${menujuLabel} &middot; ${speed.toFixed(0)} km/jam<div class="muted2">Update: ${data.current.time.replace('T',' ')} WIB</div>`;
+    }
+  } catch(err){
+    const txtEl = document.getElementById("windTxt");
+    if (txtEl) txtEl.textContent = "Data angin tidak tersedia.";
+  }
+}
+
 
 function statusFromScore(score){
   if (score === null || score === undefined) return { label: "Belum ada data", color: "#999" };
