@@ -313,6 +313,8 @@
   .status-msg.ok{color:var(--good);}
 
   canvas{max-height:220px;}
+  #kecamatanBarChartWrap{max-height:560px; overflow-y:auto; overflow-x:hidden;}
+  #kecamatanBarChart{max-height:none;}
 
   footer{
     text-align:center;
@@ -415,10 +417,12 @@
           <label style="font-size:0.75rem; color:var(--muted); font-weight:600;">Total Kasus ISPA per <span id="barChartLevelLabel">Kecamatan</span> (rentang tanggal di atas):</label>
           <select id="barChartLevel" style="padding:6px 9px; border:1px solid var(--line); border-radius:6px; font-size:0.8rem; background:#fbfaf6;" onchange="renderKecamatanBarChart()">
             <option value="kecamatan">Per Kecamatan</option>
-            <option value="puskesmas">Per Puskesmas/Faskes</option>
+            <option value="puskesmas">Per Puskesmas/Rumah Sakit</option>
           </select>
         </div>
-        <canvas id="kecamatanBarChart"></canvas>
+        <div id="kecamatanBarChartWrap">
+          <canvas id="kecamatanBarChart"></canvas>
+        </div>
         <div class="btn-row" style="margin-top:10px;">
           <button type="button" class="btn secondary" onclick="downloadChartJPG('kecamatanBarChart','kasus-per-wilayah')">⬇ JPG</button>
           <button type="button" class="btn secondary" onclick="downloadChartPDF('kecamatanBarChart','Total Kasus ISPA')">⬇ PDF</button>
@@ -440,7 +444,7 @@
       <label style="font-size:0.72rem; color:var(--muted); font-weight:600;">Tampilkan per:</label>
       <select id="recapLevel" style="padding:7px 9px; border:1px solid var(--line); border-radius:6px; font-size:0.85rem; width:100%; margin-bottom:10px; background:#fbfaf6;" onchange="renderRecapTable()">
         <option value="kecamatan">Kecamatan</option>
-        <option value="puskesmas">Puskesmas/Faskes Pelapor</option>
+        <option value="puskesmas">Puskesmas/Rumah Sakit Pelapor</option>
       </select>
       <table id="recapTable">
         <thead>
@@ -1269,7 +1273,7 @@ let lastRecapTableData = { level: "kecamatan", headers: [], rows: [] }; // dipak
 
 function renderRecapTable(){
   const level = document.getElementById("recapLevel").value;
-  document.getElementById("recapHarianHint").textContent = level === "puskesmas" ? "per Puskesmas/Faskes Pelapor" : "per Kecamatan";
+  document.getElementById("recapHarianHint").textContent = level === "puskesmas" ? "per Puskesmas/Rumah Sakit Pelapor" : "per Kecamatan";
 
   const tbody = document.querySelector("#recapTable tbody");
   const thead = document.getElementById("recapTableHead");
@@ -1278,7 +1282,7 @@ function renderRecapTable(){
   const exportRows = [];
 
   if (level === "puskesmas"){
-    thead.innerHTML = `<th>Puskesmas/Faskes</th><th>Kecamatan</th><th>Status ISPU Kecamatan (est.)</th><th>Kasus ISPA hari ini</th>`;
+    thead.innerHTML = `<th>Puskesmas/Rumah Sakit</th><th>Kecamatan</th><th>Status ISPU Kecamatan (est.)</th><th>Kasus ISPA hari ini</th>`;
     PUSKESMAS.forEach(p => {
       const score = computeScore(p.kecamatan);
       const st = statusFromScore(score);
@@ -1302,7 +1306,7 @@ function renderRecapTable(){
       if (typeof hs === "number") totalHotspot += hs;
       if (score !== null && score > 100) kecTerdampak++;
     });
-    lastRecapTableData = { level, headers: ["Puskesmas/Faskes","Kecamatan","Status ISPU Kecamatan (est.)","Kasus ISPA hari ini"], rows: exportRows };
+    lastRecapTableData = { level, headers: ["Puskesmas/Rumah Sakit","Kecamatan","Status ISPU Kecamatan (est.)","Kasus ISPA hari ini"], rows: exportRows };
   } else {
     thead.innerHTML = `<th>Kecamatan</th><th>Status ISPU (est.)</th><th>Hotspot 24 jam</th><th>Kasus ISPA hari ini</th>`;
     KECAMATAN.forEach(k => {
@@ -1384,13 +1388,23 @@ function renderKecamatanBarChart(){
   if (!startDate || !endDate) return;
 
   const level = document.getElementById("barChartLevel").value;
-  document.getElementById("barChartLevelLabel").textContent = level === "puskesmas" ? "Puskesmas/Faskes" : "Kecamatan";
+  document.getElementById("barChartLevelLabel").textContent = level === "puskesmas" ? "Puskesmas/Rumah Sakit" : "Kecamatan";
 
   const totals = level === "puskesmas" ? computePuskesmasTotals(startDate, endDate) : computeKecamatanTotals(startDate, endDate);
   const namaEntitas = level === "puskesmas" ? PUSKESMAS.map(p => p.nama) : KECAMATAN.map(k => k.nama);
   const sorted = namaEntitas.slice().sort((a,b) => totals[b] - totals[a]);
 
-  const ctx = document.getElementById("kecamatanBarChart");
+  // Tinggi kanvas menyesuaikan jumlah kategori (±22px/baris) supaya SEMUA
+  // fasilitas (termasuk RSUD) tetap tampil dengan label yang tidak disembunyikan
+  // oleh Chart.js akibat tinggi yang terlalu pendek (dulu dibatasi max-height:220px
+  // global, sehingga label yang urutannya di bawah — termasuk RSUD saat kasusnya
+  // rendah/nol — ikut hilang karena auto-skip).
+  const rowHeight = 22;
+  const chartPixelHeight = Math.max(220, sorted.length * rowHeight);
+  const canvasEl = document.getElementById("kecamatanBarChart");
+  canvasEl.style.height = chartPixelHeight + "px";
+
+  const ctx = canvasEl;
   if (kecamatanBarChart) kecamatanBarChart.destroy();
   kecamatanBarChart = new Chart(ctx, {
     type: 'bar',
@@ -1404,9 +1418,13 @@ function renderKecamatanBarChart(){
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       indexAxis: 'y',
       plugins: { legend: { display: false } },
-      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+      scales: {
+        x: { beginAtZero: true, ticks: { precision: 0 } },
+        y: { ticks: { autoSkip: false } }
+      }
     }
   });
 }
@@ -1559,7 +1577,7 @@ function exportRekapPeriodePDF(){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: "landscape" });
   doc.setFontSize(14);
-  doc.text(`Rekap Per Periode — ${level === "puskesmas" ? "per Puskesmas/Faskes" : "per Kecamatan"}`, 14, 15);
+  doc.text(`Rekap Per Periode — ${level === "puskesmas" ? "per Puskesmas/Rumah Sakit" : "per Kecamatan"}`, 14, 15);
   doc.setFontSize(9);
   doc.text(`Dinas Kesehatan Kabupaten Kapuas — diunduh ${new Date().toLocaleString('id-ID')}`, 14, 21);
   doc.autoTable({
@@ -1884,7 +1902,7 @@ function exportRecapPDF(){
   if (typeof window.jspdf === "undefined"){ alert("Library PDF belum siap termuat, coba lagi sebentar."); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: "landscape" });
-  const judul = lastRecapTableData.level === "puskesmas" ? "Rekap Harian ISPA — per Puskesmas/Faskes Pelapor" : "Rekap Harian ISPA — per Kecamatan";
+  const judul = lastRecapTableData.level === "puskesmas" ? "Rekap Harian ISPA — per Puskesmas/Rumah Sakit Pelapor" : "Rekap Harian ISPA — per Kecamatan";
   doc.setFontSize(14);
   doc.text(judul, 14, 15);
   doc.setFontSize(9);
