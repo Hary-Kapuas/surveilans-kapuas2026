@@ -955,12 +955,19 @@ function toggleWind(){
   windVisible = document.getElementById("toggleWind").checked;
   if (windVisible){
     map.addControl(windControl);
-    loadWindData();
-    if (!windInterval) windInterval = setInterval(loadWindData, 15 * 60 * 1000); // refresh tiap 15 menit
+    refreshWindAll();
+    if (!windInterval) windInterval = setInterval(refreshWindAll, 15 * 60 * 1000); // refresh data tiap 15 menit
+    startWindAnimation();
   } else {
     map.removeControl(windControl);
     if (windInterval){ clearInterval(windInterval); windInterval = null; }
+    stopWindAnimation();
   }
+}
+
+function refreshWindAll(){
+  loadWindData();
+  loadWindGrid();
 }
 
 async function loadWindData(){
@@ -984,6 +991,162 @@ async function loadWindData(){
     const txtEl = document.getElementById("windTxt");
     if (txtEl) txtEl.textContent = "Data angin tidak tersedia.";
   }
+}
+
+/* ======================================================
+   6b. ANIMASI ARAH ANGIN BERGERAK (mirip gaya ISPU KLHK)
+   Grid titik angin (Open-Meteo) + partikel yang dianimasikan
+   di atas kanvas transparan mengikuti arah/kecepatan angin.
+   Skala pergerakan bersifat stilasi (visual), bukan kecepatan
+   real fisik, supaya tetap terlihat jelas di layar.
+====================================================== */
+const WIND_BOUNDS = { latMin: -3.7, latMax: -0.2, lngMin: 113.5, lngMax: 115.0 }; // cakupan Kab. Kapuas + margin
+const WIND_GRID_ROWS = 5, WIND_GRID_COLS = 5;
+const WIND_PARTICLE_COUNT = 450;
+const WIND_ANIM_DT_SECONDS = 22; // "waktu simulasi" yang dilaju tiap frame — atur di sini kalau mau lebih cepat/lambat
+const WIND_TRAIL_LEN = 7;
+
+let windGrid = null;
+let windCanvas = null, windCtx = null;
+let windParticles = [];
+let windAnimFrameId = null;
+
+function ensureWindCanvas(){
+  if (windCanvas) return;
+  windCanvas = document.createElement("canvas");
+  windCanvas.style.position = "absolute";
+  windCanvas.style.top = "0";
+  windCanvas.style.left = "0";
+  windCanvas.style.pointerEvents = "none";
+  windCanvas.style.zIndex = 450; // di atas tile/arsiran kecamatan, di bawah kontrol Leaflet
+  document.getElementById("map").appendChild(windCanvas);
+  windCtx = windCanvas.getContext("2d");
+  resizeWindCanvas();
+  map.on("resize move zoom", resizeWindCanvas);
+}
+
+function resizeWindCanvas(){
+  if (!windCanvas) return;
+  const size = map.getSize();
+  windCanvas.width = size.x;
+  windCanvas.height = size.y;
+}
+
+function randomWindPoint(){
+  return {
+    lat: WIND_BOUNDS.latMin + Math.random() * (WIND_BOUNDS.latMax - WIND_BOUNDS.latMin),
+    lng: WIND_BOUNDS.lngMin + Math.random() * (WIND_BOUNDS.lngMax - WIND_BOUNDS.lngMin)
+  };
+}
+
+function initWindParticles(){
+  windParticles = [];
+  for (let i = 0; i < WIND_PARTICLE_COUNT; i++){
+    const p = randomWindPoint();
+    windParticles.push({ lat: p.lat, lng: p.lng, age: Math.floor(Math.random() * 120), trail: [] });
+  }
+}
+
+async function loadWindGrid(){
+  if (!windVisible) return;
+  const lats = [], lngs = [];
+  for (let r = 0; r < WIND_GRID_ROWS; r++){
+    const lat = WIND_BOUNDS.latMax - (r / (WIND_GRID_ROWS - 1)) * (WIND_BOUNDS.latMax - WIND_BOUNDS.latMin);
+    for (let c = 0; c < WIND_GRID_COLS; c++){
+      const lng = WIND_BOUNDS.lngMin + (c / (WIND_GRID_COLS - 1)) * (WIND_BOUNDS.lngMax - WIND_BOUNDS.lngMin);
+      lats.push(lat.toFixed(3));
+      lngs.push(lng.toFixed(3));
+    }
+  }
+  try{
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats.join(",")}&longitude=${lngs.join(",")}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&timezone=Asia%2FJakarta`);
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : [data];
+    const cells = list.map(pt => {
+      const speed = pt.current.wind_speed_10m;    // m/s
+      const dirFrom = pt.current.wind_direction_10m;
+      const rad = dirFrom * Math.PI / 180;
+      // konversi ke komponen kecepatan U (timur+) / V (utara+) — arah TUJUAN angin bertiup
+      return { u: -speed * Math.sin(rad), v: -speed * Math.cos(rad), speed };
+    });
+    windGrid = { ...WIND_BOUNDS, rows: WIND_GRID_ROWS, cols: WIND_GRID_COLS, cells };
+  } catch(err){
+    windGrid = null; // animasi berhenti bergerak (partikel diam) sampai berhasil lagi
+  }
+}
+
+function sampleWindGrid(lat, lng){
+  if (!windGrid) return { u: 0, v: 0, speed: 0 };
+  const { latMin, latMax, lngMin, lngMax, rows, cols, cells } = windGrid;
+  const fx = Math.min(Math.max((lng - lngMin) / (lngMax - lngMin), 0), 0.9999) * (cols - 1);
+  const fy = Math.min(Math.max((latMax - lat) / (latMax - latMin), 0), 0.9999) * (rows - 1);
+  const x0 = Math.floor(fx), x1 = Math.min(x0 + 1, cols - 1);
+  const y0 = Math.floor(fy), y1 = Math.min(y0 + 1, rows - 1);
+  const tx = fx - x0, ty = fy - y0;
+  const c00 = cells[y0 * cols + x0], c10 = cells[y0 * cols + x1];
+  const c01 = cells[y1 * cols + x0], c11 = cells[y1 * cols + x1];
+  const u = (c00.u * (1 - tx) + c10.u * tx) * (1 - ty) + (c01.u * (1 - tx) + c11.u * tx) * ty;
+  const v = (c00.v * (1 - tx) + c10.v * tx) * (1 - ty) + (c01.v * (1 - tx) + c11.v * tx) * ty;
+  const speed = (c00.speed * (1 - tx) + c10.speed * tx) * (1 - ty) + (c01.speed * (1 - tx) + c11.speed * tx) * ty;
+  return { u, v, speed };
+}
+
+function windSpeedColor(speedMs){
+  if (speedMs < 1) return "rgba(59,130,246,0.75)";   // biru — tenang
+  if (speedMs < 3) return "rgba(56,189,178,0.75)";   // teal
+  if (speedMs < 5) return "rgba(34,197,94,0.8)";     // hijau
+  if (speedMs < 7) return "rgba(234,179,8,0.85)";    // kuning
+  if (speedMs < 9) return "rgba(249,115,22,0.9)";    // oranye
+  return "rgba(239,68,68,0.9)";                      // merah — kencang
+}
+
+const METERS_PER_DEG_LAT = 111320;
+function metersPerDegLng(lat){ return 111320 * Math.cos(lat * Math.PI / 180); }
+
+function stepWindParticle(p){
+  const { u, v, speed } = sampleWindGrid(p.lat, p.lng);
+  p.lat += (v * WIND_ANIM_DT_SECONDS) / METERS_PER_DEG_LAT;
+  p.lng += (u * WIND_ANIM_DT_SECONDS) / metersPerDegLng(p.lat);
+  p.trail.push({ lat: p.lat, lng: p.lng });
+  if (p.trail.length > WIND_TRAIL_LEN) p.trail.shift();
+  p.age++;
+  p.lastSpeed = speed;
+
+  const outOfBounds = p.lat < WIND_BOUNDS.latMin || p.lat > WIND_BOUNDS.latMax ||
+                       p.lng < WIND_BOUNDS.lngMin || p.lng > WIND_BOUNDS.lngMax;
+  if (outOfBounds || p.age > 240){
+    const np = randomWindPoint();
+    p.lat = np.lat; p.lng = np.lng; p.age = 0; p.trail = [];
+  }
+}
+
+function drawWindFrame(){
+  if (!windVisible || !windCtx) return;
+  windCtx.clearRect(0, 0, windCanvas.width, windCanvas.height);
+  windParticles.forEach(p => {
+    stepWindParticle(p);
+    if (p.trail.length < 2) return;
+    windCtx.strokeStyle = windSpeedColor(p.lastSpeed || 0);
+    windCtx.lineWidth = 1.2;
+    windCtx.beginPath();
+    p.trail.forEach((pt, i) => {
+      const px = map.latLngToContainerPoint([pt.lat, pt.lng]);
+      if (i === 0) windCtx.moveTo(px.x, px.y); else windCtx.lineTo(px.x, px.y);
+    });
+    windCtx.stroke();
+  });
+  windAnimFrameId = requestAnimationFrame(drawWindFrame);
+}
+
+function startWindAnimation(){
+  ensureWindCanvas();
+  if (windParticles.length === 0) initWindParticles();
+  if (!windAnimFrameId) drawWindFrame();
+}
+
+function stopWindAnimation(){
+  if (windAnimFrameId){ cancelAnimationFrame(windAnimFrameId); windAnimFrameId = null; }
+  if (windCtx) windCtx.clearRect(0, 0, windCanvas.width, windCanvas.height);
 }
 
 
