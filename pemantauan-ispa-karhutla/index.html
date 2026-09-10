@@ -176,6 +176,10 @@
   }
   .wind-control .txt b{ color:var(--ink,#222); }
   .wind-control .txt .muted2{ color:#888; font-size:0.7rem; }
+  .manual-hotspot-icon{
+    font-size:20px; text-align:center; line-height:22px;
+    filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 2px #000);
+  }
 
   .legend{
     display:flex;
@@ -420,10 +424,42 @@
         <span><i style="background:var(--berbahaya)"></i> Berbahaya (&gt;300)</span>
         <span><i style="background:#999"></i> Belum ada data</span>
         <span><i style="background:#ff4500; width:7px; height:7px;"></i> Titik hotspot (FIRMS)</span>
+        <span>🔥 Titik api lapangan (terverifikasi petugas)</span>
       </div>
       <div class="banner">
         <strong>Catatan penting soal data ISPU</strong>
         Sejak Agustus 2026, Kabupaten Kapuas sudah punya <strong>1 stasiun AQMS resmi KLHK</strong> (lokasi: Kel. Selat Hulu, Kec. Selat) — kecamatan Selat kini otomatis memakai data ISPU RESMI dari stasiun tersebut, diperbarui otomatis. Untuk 16 kecamatan lainnya (belum ada stasiun), nilai ISPU tetap <em>estimasi</em>, dihitung dari jumlah titik panas (hotspot) NASA FIRMS ditambah nilai dasar PM2.5 regional — gunakan sebagai indikator dini, bukan pengganti pengukuran resmi. Titik oranye kecil menandakan lokasi hotspot individual yang terdeteksi satelit dalam 2 hari terakhir.
+      </div>
+
+      <div style="margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);">
+        <h3 style="font-size:0.85rem; margin:0 0 6px 0;">📍 Lapor Titik Api Hasil Pantauan Lapangan</h3>
+        <p style="font-size:0.72rem; color:var(--muted); margin:0 0 8px 0;">
+          Satelit FIRMS tidak selalu mendeteksi semua titik api secara real-time — ada jeda waktu lintasan satelit,
+          dan titik api kecil/sudah tertangani bisa jadi tidak cukup panas untuk terdeteksi. Kalau petugas sudah
+          memastikan langsung di lokasi (mis. dari foto GPS saat patroli), masukkan titiknya di sini supaya tetap
+          tercatat di peta &amp; tabel — ditandai jelas sebagai <em>data lapangan</em>, bukan estimasi satelit.
+          Ditampilkan di peta selama 48 jam sejak waktu kejadian (sama seperti jendela hotspot satelit); data lengkapnya tetap tersimpan permanen di Google Sheet.
+        </p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+          <div>
+            <label style="font-size:0.72rem;">Koordinat (tempel dari foto GPS)</label>
+            <input type="text" id="lfKoordinat" placeholder="-2.9873158, 114.3977901" style="padding:7px 9px; border:1px solid var(--line); border-radius:6px; font-size:0.85rem; width:100%; background:#fbfaf6;">
+          </div>
+          <div>
+            <label style="font-size:0.72rem;">Tanggal &amp; waktu</label>
+            <input type="datetime-local" id="lfWaktu" style="padding:7px 9px; border:1px solid var(--line); border-radius:6px; font-size:0.85rem; width:100%; background:#fbfaf6;">
+          </div>
+        </div>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:0.72rem;">Keterangan (opsional)</label>
+          <input type="text" id="lfKeterangan" placeholder="mis. lahan gambut terbakar, sudah dipadamkan tim" style="padding:7px 9px; border:1px solid var(--line); border-radius:6px; font-size:0.85rem; width:100%; background:#fbfaf6;">
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:0.72rem;">Pelapor (opsional)</label>
+          <input type="text" id="lfPelapor" placeholder="nama/petugas" style="padding:7px 9px; border:1px solid var(--line); border-radius:6px; font-size:0.85rem; width:100%; background:#fbfaf6;">
+        </div>
+        <button type="button" class="btn" onclick="submitLaporanLapangan()">📍 Simpan Titik Lapangan</button>
+        <div class="status-msg" id="lfStatus"></div>
       </div>
     </div>
 
@@ -1498,6 +1534,118 @@ function haversine(lat1, lon1, lat2, lon2){
 }
 
 /* ======================================================
+   6d. LAPORAN TITIK API LAPANGAN (terverifikasi petugas)
+   Melengkapi hotspot satelit FIRMS yang punya keterbatasan:
+   jeda waktu lintasan satelit, dan titik api kecil/tertangani
+   yang mungkin tidak cukup panas untuk terdeteksi. Petugas bisa
+   memasukkan koordinat langsung dari foto GPS saat patroli.
+====================================================== */
+let manualHotspots = [];
+let manualHotspotLayerGroup = null;
+
+function parseKoordinat(str){
+  const matches = str.match(/-?\d+(\.\d+)?/g);
+  if (!matches || matches.length < 2) return null;
+  const lat = parseFloat(matches[0]);
+  const lng = parseFloat(matches[1]);
+  if (isNaN(lat) || isNaN(lng)) return null;
+  return { lat, lng };
+}
+
+// Laporan lapangan TETAP TERSIMPAN SELAMANYA di Google Sheet (arsip/riwayat,
+// tidak pernah otomatis terhapus) — tapi yang ditampilkan di PETA cuma yang
+// masih relevan/baru, supaya tidak menumpuk terus-menerus. Disamakan dengan
+// jendela waktu hotspot satelit FIRMS di aplikasi ini (2 hari/48 jam terakhir).
+const MANUAL_HOTSPOT_TAMPIL_JAM = 48;
+
+async function loadManualHotspots(){
+  if (!SCRIPT_URL) return;
+  try{
+    const res = await fetch(`${SCRIPT_URL}?action=hotspot_manual`);
+    const data = await res.json();
+    const semua = data.points || [];
+    const batasWaktu = Date.now() - MANUAL_HOTSPOT_TAMPIL_JAM * 60 * 60 * 1000;
+    manualHotspots = semua.filter(p => {
+      const t = new Date(p.waktu).getTime();
+      return isNaN(t) || t >= batasWaktu; // kalau waktu tidak terbaca, tetap ditampilkan (aman)
+    });
+    renderManualHotspotPoints();
+  } catch(err){
+    // Diam-diam gagal — kalau backend belum punya action ini, fitur tetap
+    // jalan secara lokal (per sesi) lewat submitLaporanLapangan().
+  }
+}
+
+async function submitLaporanLapangan(){
+  const raw = document.getElementById("lfKoordinat").value.trim();
+  const koor = parseKoordinat(raw);
+  if (!koor){
+    setStatus("lfStatus", "Format koordinat tidak terbaca. Contoh: -2.9873158, 114.3977901", "err");
+    return;
+  }
+  const nama = findKecamatanForPoint(koor.lat, koor.lng);
+  if (!nama){
+    setStatus("lfStatus", "Koordinat ini di luar batas 17 kecamatan Kabupaten Kapuas — cek lagi angkanya.", "err");
+    return;
+  }
+  const waktuInput = document.getElementById("lfWaktu").value;
+  const waktu = waktuInput || new Date().toISOString().slice(0,16);
+  const keterangan = document.getElementById("lfKeterangan").value.trim();
+  const pelapor = document.getElementById("lfPelapor").value.trim();
+  const entry = { lat: koor.lat, lng: koor.lng, kecamatan: nama, waktu, keterangan, pelapor };
+
+  setStatus("lfStatus", `Menyimpan titik di Kec. ${nama}...`, "");
+  manualHotspots.push(entry);
+  renderManualHotspotPoints();
+
+  if (SCRIPT_URL){
+    try{
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: {"Content-Type": "text/plain"},
+        body: JSON.stringify({ action: "lapor_hotspot_manual", ...entry })
+      });
+      setStatus("lfStatus", `✔ Tersimpan — masuk Kec. ${nama}.`, "ok");
+    } catch(err){
+      setStatus("lfStatus", `Tampil di peta, tapi gagal disimpan ke server (${err.message}) — tersimpan lagi kalau nanti dikirim ulang.`, "err");
+    }
+  } else {
+    setStatus("lfStatus", `✔ Ditampilkan di peta (sesi ini saja — belum ada URL backend untuk simpan permanen).`, "ok");
+  }
+  document.getElementById("lfKoordinat").value = "";
+  document.getElementById("lfKeterangan").value = "";
+}
+
+function renderManualHotspotPoints(){
+  if (manualHotspotLayerGroup) map.removeLayer(manualHotspotLayerGroup);
+  manualHotspotLayerGroup = L.layerGroup();
+  manualHotspots.forEach(p => {
+    const icon = L.divIcon({
+      html: "🔥",
+      className: "manual-hotspot-icon",
+      iconSize: [22, 22],
+      iconAnchor: [11, 11]
+    });
+    const marker = L.marker([p.lat, p.lng], { icon });
+    const gmapsUrl = `https://www.google.com/maps?q=${p.lat},${p.lng}`;
+    marker.bindPopup(`
+      <div class="hotspot-popup">
+        <strong>🔥 Titik Api Lapangan (Terverifikasi)</strong><br><br>
+        <div><b>Kecamatan:</b> ${p.kecamatan}</div>
+        <div><b>Koordinat:</b> ${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</div>
+        <div><b>Waktu:</b> ${(p.waktu || "").replace("T"," ")}</div>
+        ${p.keterangan ? `<div><b>Keterangan:</b> ${p.keterangan}</div>` : ""}
+        ${p.pelapor ? `<div><b>Pelapor:</b> ${p.pelapor}</div>` : ""}
+        <a class="gmaps-btn" href="${gmapsUrl}" target="_blank" rel="noopener">Buka di Google Maps</a>
+      </div>
+    `);
+    manualHotspotLayerGroup.addLayer(marker);
+  });
+  manualHotspotLayerGroup.addTo(map); // selalu tampil — ini data terverifikasi, bukan opsional
+}
+
+
+/* ======================================================
    6a. RENDER TITIK SEBARAN HOTSPOT INDIVIDUAL DI PETA
 ====================================================== */
 function renderHotspotPoints(){
@@ -2421,6 +2569,7 @@ function init(){
   initKecamatanShapes();
   initMarkers();
   refreshAll();
+  loadManualHotspots();
   document.getElementById("fTanggal").addEventListener("change", refreshAll);
   document.getElementById("trendDari").addEventListener("change", () => { renderTrendChart(); renderKecamatanBarChart(); });
   document.getElementById("trendSampai").addEventListener("change", () => { renderTrendChart(); renderKecamatanBarChart(); });
