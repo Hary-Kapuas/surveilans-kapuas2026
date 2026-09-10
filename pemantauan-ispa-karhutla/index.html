@@ -1600,11 +1600,16 @@ async function submitLaporanLapangan(){
 
   if (SCRIPT_URL){
     try{
-      await fetch(SCRIPT_URL, {
+      const res = await fetch(SCRIPT_URL, {
         method: "POST",
         headers: {"Content-Type": "text/plain"},
         body: JSON.stringify({ action: "lapor_hotspot_manual", ...entry })
       });
+      const data = await res.json();
+      if (data.ok && data.timestamp){
+        entry.timestamp = data.timestamp; // supaya bisa langsung dihapus tanpa reload
+        renderManualHotspotPoints();
+      }
       setStatus("lfStatus", `✔ Tersimpan — masuk Kec. ${nama}.`, "ok");
     } catch(err){
       setStatus("lfStatus", `Tampil di peta, tapi gagal disimpan ke server (${err.message}) — tersimpan lagi kalau nanti dikirim ulang.`, "err");
@@ -1614,6 +1619,28 @@ async function submitLaporanLapangan(){
   }
   document.getElementById("lfKoordinat").value = "";
   document.getElementById("lfKeterangan").value = "";
+}
+
+async function hapusTitikLapangan(timestamp){
+  if (!confirm("Yakin mau menghapus titik api lapangan ini? Tindakan ini tidak bisa dibatalkan.")) return;
+  try{
+    if (SCRIPT_URL && timestamp){
+      const res = await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: {"Content-Type": "text/plain"},
+        body: JSON.stringify({ action: "hapus_hotspot_manual", timestamp })
+      });
+      const data = await res.json();
+      if (!data.ok){
+        alert("Gagal menghapus: " + (data.message || "sebab tidak diketahui"));
+        return;
+      }
+    }
+    manualHotspots = manualHotspots.filter(p => p.timestamp !== timestamp);
+    renderManualHotspotPoints();
+  } catch(err){
+    alert("Gagal menghapus: " + err.message);
+  }
 }
 
 function renderManualHotspotPoints(){
@@ -1637,6 +1664,7 @@ function renderManualHotspotPoints(){
         ${p.keterangan ? `<div><b>Keterangan:</b> ${p.keterangan}</div>` : ""}
         ${p.pelapor ? `<div><b>Pelapor:</b> ${p.pelapor}</div>` : ""}
         <a class="gmaps-btn" href="${gmapsUrl}" target="_blank" rel="noopener">Buka di Google Maps</a>
+        ${p.timestamp ? `<button type="button" class="gmaps-btn" style="background:#c0392b; border:none; width:100%; margin-top:6px; cursor:pointer;" onclick="hapusTitikLapangan('${p.timestamp}')">🗑 Hapus titik ini</button>` : ""}
       </div>
     `);
     manualHotspotLayerGroup.addLayer(marker);
