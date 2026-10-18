@@ -260,6 +260,7 @@
   }
   .btn.secondary:hover{background:#e9f2f0;}
   .btn-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .btn.secondary.aktif{background:var(--teal); color:#fff;}
 
   .banner{
     background:#fbf1de;
@@ -461,6 +462,33 @@
         <button type="button" class="btn" onclick="submitLaporanLapangan()">📍 Simpan Titik Lapangan</button>
         <div class="status-msg" id="lfStatus"></div>
       </div>
+    </div>
+
+    <div class="panel" id="ispuKlhPanel">
+      <h2>Tren ISPU Resmi per Jam <span class="hint">Stasiun AQMS KLH/BPLH, Kec. Selat</span></h2>
+      <div class="btn-row" id="ispuKlhRange" style="margin-bottom:10px;">
+        <button type="button" class="btn secondary" style="margin-top:0;" data-hari="1" onclick="setIspuKlhRentang(1)">24 jam</button>
+        <button type="button" class="btn secondary" style="margin-top:0;" data-hari="3" onclick="setIspuKlhRentang(3)">3 hari</button>
+        <button type="button" class="btn secondary" style="margin-top:0;" data-hari="7" onclick="setIspuKlhRentang(7)">7 hari</button>
+        <button type="button" class="btn secondary" style="margin-top:0;" data-hari="30" onclick="setIspuKlhRentang(30)">30 hari</button>
+      </div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="num" id="ispuKlhNow">-</div><div class="lbl" id="ispuKlhNowLbl">ISPU terakhir</div></div>
+        <div class="stat-card"><div class="num" id="ispuKlhMax">-</div><div class="lbl">Tertinggi dalam rentang</div></div>
+        <div class="stat-card"><div class="num" id="ispuKlhJamBahaya">-</div><div class="lbl">Jam kategori Berbahaya</div></div>
+      </div>
+      <canvas id="ispuKlhChart"></canvas>
+      <div class="status-msg" id="ispuKlhStatus"></div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button type="button" class="btn secondary" onclick="downloadChartJPG('ispuKlhChart','tren-ispu-resmi-kapuas')">⬇ JPG</button>
+        <button type="button" class="btn secondary" onclick="downloadChartPDF('ispuKlhChart','Tren ISPU Resmi Stasiun Kapuas')">⬇ PDF</button>
+        <button type="button" class="btn secondary" onclick="downloadIspuKlhExcel()">⬇ Excel data per jam</button>
+      </div>
+      <p style="font-size:0.72rem; color:var(--muted); margin:10px 0 0;">
+        Nilai pengukuran stasiun resmi, diarsipkan otomatis dari portal ISPU KLH/BPLH setiap 4 jam sehingga riwayatnya tersimpan lebih dari 24 jam.
+        Arsip dimulai 17 Oktober 2026; rentang sebelum tanggal itu belum tersedia. Jam tanpa data dibiarkan kosong pada grafik.
+        Warna latar menunjukkan kategori ISPU.
+      </p>
     </div>
 
     <div class="panel">
@@ -1364,6 +1392,218 @@ function tampilkanDetailISPUResmi(namaKec){
   showModal(`Detail Kualitas Udara — Kecamatan ${namaKec}`, html, [
     { label: "Tutup", secondary: true, onClick: () => {} }
   ]);
+}
+
+/* ======================================================
+   4b. ARSIP ISPU RESMI PER JAM (sheet ISPU_KLH, action=ispuKlh)
+   Diisi otomatis oleh IspuKlh.gs di backend setiap 4 jam.
+====================================================== */
+let ispuKlhData = [];
+let ispuKlhHariDimuat = 0;
+let ispuKlhRentang = 7;
+let ispuKlhChart;
+
+function ispuKlhParseWaktu(s){
+  // "2026-10-18 15:00" (WIB) -> Date
+  return new Date(String(s).replace(" ", "T") + ":00+07:00");
+}
+
+function ispuKlhLabelJam(ms){
+  const d = new Date(ms + 7 * 3600000); // tampilkan jam WIB apa pun zona waktu perangkat
+  const p = n => String(n).padStart(2, "0");
+  return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)} ${p(d.getUTCHours())}:00`;
+}
+
+function ispuKlhKategori(v){
+  if (v === null || v === undefined || v === "") return "";
+  if (v <= 50) return "BAIK";
+  if (v <= 100) return "SEDANG";
+  if (v <= 200) return "TIDAK SEHAT";
+  if (v <= 300) return "SANGAT TIDAK SEHAT";
+  return "BERBAHAYA";
+}
+
+function ispuKlhAngka(v){
+  return (v === "" || v === null || v === undefined || isNaN(Number(v))) ? null : Number(v);
+}
+
+async function loadIspuKlh(hari){
+  hari = hari || Math.max(ispuKlhRentang, 7);
+  if (!SCRIPT_URL) return;
+  try{
+    const res = await fetch(`${SCRIPT_URL}?action=ispuKlh&hari=${hari}`);
+    const data = await res.json();
+    if (data.status === "ok" && Array.isArray(data.data)){
+      ispuKlhData = data.data;
+      ispuKlhHariDimuat = hari;
+    }
+  } catch(err){
+    // Gagal memuat: data arsip sebelumnya (kalau ada) tetap dipakai
+  }
+}
+
+/* Cadangan: kalau ispu_resmi gagal/kosong, kecamatan stasiun tetap
+   memakai nilai resmi terbaru dari arsip (maks. 6 jam), bukan estimasi. */
+function terapkanFallbackIspuKlh(){
+  if (!ispuKlhData.length) return;
+  const r = ispuKlhData[ispuKlhData.length - 1];
+  if (!r.kecamatan || officialISPU[r.kecamatan]) return;
+  const umurJam = (Date.now() - ispuKlhParseWaktu(r.waktu).getTime()) / 3600000;
+  if (umurJam > 6) return;
+  const n = ispuKlhAngka;
+  officialISPU[r.kecamatan] = {
+    ok: true,
+    kecamatan: r.kecamatan,
+    ispu: n(r.ispu),
+    kategori: r.kategori,
+    parameterKritis: r.parameter_kritis || "-",
+    waktu: r.waktu + " WIB (arsip)",
+    subIndeks: { pm10: n(r.ispu_pm10), pm25: n(r.ispu_pm25), so2: n(r.ispu_so2), co: n(r.ispu_co), o3: n(r.ispu_o3), no2: n(r.ispu_no2) },
+    konsentrasi: { pm25: n(r.konsentrasi_pm25), pm10: n(r.konsentrasi_pm10) }
+  };
+}
+
+function ispuKlhBarisRentang(){
+  const batas = Date.now() - ispuKlhRentang * 86400000;
+  return ispuKlhData.filter(r => ispuKlhParseWaktu(r.waktu).getTime() >= batas);
+}
+
+function setIspuKlhRentang(hari){
+  ispuKlhRentang = hari;
+  if (hari > ispuKlhHariDimuat){
+    setStatus("ispuKlhStatus", "Memuat arsip...", "");
+    loadIspuKlh(hari).then(renderIspuKlhChart);
+  } else {
+    renderIspuKlhChart();
+  }
+}
+
+// Pita warna kategori ISPU di latar grafik
+const ispuKlhBandPlugin = {
+  id: "ispuKlhBands",
+  beforeDatasetsDraw(chart){
+    const { ctx, chartArea, scales: { y } } = chart;
+    if (!chartArea) return;
+    const bands = [[0,50,"#3f8f5f"],[50,100,"#4f8fbf"],[100,200,"#d9a53a"],[200,300,"#c9542f"],[300,100000,"#5a1f2b"]];
+    ctx.save();
+    ctx.globalAlpha = 0.09;
+    bands.forEach(([a, b, warna]) => {
+      if (a >= y.max) return;
+      const yAtas = y.getPixelForValue(Math.min(b, y.max));
+      const yBawah = y.getPixelForValue(Math.max(a, y.min));
+      ctx.fillStyle = warna;
+      ctx.fillRect(chartArea.left, yAtas, chartArea.right - chartArea.left, yBawah - yAtas);
+    });
+    ctx.restore();
+  }
+};
+
+function renderIspuKlhChart(){
+  const canvas = document.getElementById("ispuKlhChart");
+  if (!canvas) return;
+
+  document.querySelectorAll("#ispuKlhRange button").forEach(b =>
+    b.classList.toggle("aktif", Number(b.dataset.hari) === ispuKlhRentang));
+
+  if (ispuKlhChart){ ispuKlhChart.destroy(); ispuKlhChart = null; }
+
+  const rows = ispuKlhBarisRentang();
+  const elNow = document.getElementById("ispuKlhNow");
+  const elMax = document.getElementById("ispuKlhMax");
+  const elBahaya = document.getElementById("ispuKlhJamBahaya");
+
+  if (!rows.length){
+    [elNow, elMax, elBahaya].forEach(el => { el.textContent = "-"; el.style.color = ""; });
+    document.getElementById("ispuKlhNowLbl").textContent = "ISPU terakhir";
+    setStatus("ispuKlhStatus", SCRIPT_URL
+      ? "Belum ada data arsip untuk rentang ini. Pastikan trigger fetchIspuKlh di backend berjalan."
+      : "Isi dulu URL backend di 'Pengaturan koneksi data'.", "err");
+    return;
+  }
+
+  // Deret per jam yang utuh: jam yang tidak ada di arsip diisi null (tampil sebagai celah)
+  const peta = new Map(rows.map(r => [ispuKlhParseWaktu(r.waktu).getTime(), r]));
+  const t0 = ispuKlhParseWaktu(rows[0].waktu).getTime();
+  const t1 = ispuKlhParseWaktu(rows[rows.length - 1].waktu).getTime();
+  const labels = [], dIspu = [], dPm25 = [], dPm10 = [];
+  for (let t = t0; t <= t1; t += 3600000){
+    const r = peta.get(t);
+    labels.push(ispuKlhLabelJam(t));
+    dIspu.push(r ? ispuKlhAngka(r.ispu) : null);
+    dPm25.push(r ? ispuKlhAngka(r.ispu_pm25) : null);
+    dPm10.push(r ? ispuKlhAngka(r.ispu_pm10) : null);
+  }
+
+  // Ringkasan
+  const nilai = dIspu.filter(v => v !== null);
+  const terakhir = rows[rows.length - 1];
+  const vAkhir = ispuKlhAngka(terakhir.ispu);
+  const vMax = nilai.length ? Math.max(...nilai) : null;
+  elNow.textContent = vAkhir ?? "-";
+  elNow.style.color = kategoriWarna(terakhir.kategori || ispuKlhKategori(vAkhir));
+  document.getElementById("ispuKlhNowLbl").textContent = "ISPU " + ispuKlhLabelJam(t1) + " WIB";
+  elMax.textContent = vMax ?? "-";
+  elMax.style.color = kategoriWarna(ispuKlhKategori(vMax));
+  elBahaya.textContent = nilai.filter(v => v > 300).length;
+  elBahaya.style.color = "";
+
+  const kosong = labels.length - nilai.length;
+  setStatus("ispuKlhStatus",
+    `${nilai.length} jam data` + (kosong ? `, ${kosong} jam kosong` : "") +
+    `. Kategori terakhir: ${terakhir.kategori || ispuKlhKategori(vAkhir)} (parameter kritis ${terakhir.parameter_kritis || "-"}).`, "");
+
+  const banyak = labels.length > 72;
+  ispuKlhChart = new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        { label: "ISPU", data: dIspu, borderColor: "#12303a", backgroundColor: "#12303a",
+          borderWidth: 2, pointRadius: banyak ? 0 : 2, tension: 0.2, spanGaps: false },
+        { label: "Sub-indeks PM2.5", data: dPm25, borderColor: "#c97a2c", backgroundColor: "#c97a2c",
+          borderWidth: 1.5, borderDash: [5, 3], pointRadius: 0, tension: 0.2, spanGaps: false },
+        { label: "Sub-indeks PM10", data: dPm10, borderColor: "#0f5c5c", backgroundColor: "#0f5c5c",
+          borderWidth: 1.5, borderDash: [2, 3], pointRadius: 0, tension: 0.2, spanGaps: false }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: true, labels: { font: { size: 10 }, boxWidth: 18 } },
+        tooltip: { callbacks: { afterBody: items => {
+          const v = items.length ? items[0].chart.data.datasets[0].data[items[0].dataIndex] : null;
+          return v === null || v === undefined ? "Tidak ada data" : "Kategori: " + ispuKlhKategori(v);
+        } } }
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 8, maxRotation: 0, font: { size: 10 } } },
+        y: { beginAtZero: true, suggestedMax: Math.max(100, Math.ceil(((vMax || 0) + 20) / 50) * 50),
+             ticks: { font: { size: 10 } } }
+      }
+    },
+    plugins: [ispuKlhBandPlugin]
+  });
+}
+
+function downloadIspuKlhExcel(){
+  const rows = ispuKlhBarisRentang();
+  if (!rows.length){ alert("Belum ada data arsip ISPU untuk rentang ini."); return; }
+  const aoa = [[
+    "Waktu (WIB)", "ISPU", "Kategori", "Parameter kritis",
+    "Sub-indeks PM2.5", "Sub-indeks PM10", "Sub-indeks SO2", "Sub-indeks CO", "Sub-indeks O3", "Sub-indeks NO2",
+    "Konsentrasi PM2.5 (µg/m³)", "Konsentrasi PM10 (µg/m³)"
+  ]].concat(rows.map(r => [
+    r.waktu, ispuKlhAngka(r.ispu), r.kategori, r.parameter_kritis,
+    ispuKlhAngka(r.ispu_pm25), ispuKlhAngka(r.ispu_pm10), ispuKlhAngka(r.ispu_so2),
+    ispuKlhAngka(r.ispu_co), ispuKlhAngka(r.ispu_o3), ispuKlhAngka(r.ispu_no2),
+    ispuKlhAngka(r.konsentrasi_pm25), ispuKlhAngka(r.konsentrasi_pm10)
+  ]));
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [{ wch: 18 }].concat(Array(11).fill({ wch: 14 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "ISPU per jam");
+  XLSX.writeFile(wb, `ispu-resmi-kapuas-${ispuKlhRentang}hari-${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
 /* ======================================================
@@ -2533,13 +2773,15 @@ function setStatus(id, msg, type){
 
 async function refreshAll(){
   setStatus("refreshStatus", "Memuat data...", "");
-  await Promise.all([loadHotspots(), loadRecap(), loadIspuResmi()]);
+  await Promise.all([loadHotspots(), loadRecap(), loadIspuResmi(), loadIspuKlh()]);
+  terapkanFallbackIspuKlh();
   computeTodayAggregates();
   updateMarkers();
   renderHotspotPoints();
   renderRecapTable();
   renderTrendChart();
   renderKecamatanBarChart();
+  renderIspuKlhChart();
   updateMissingKecamatanWarning();
   autoIsiLaporanProvinsi();
 }
