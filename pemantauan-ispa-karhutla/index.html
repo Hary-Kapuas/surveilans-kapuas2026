@@ -538,6 +538,30 @@
         </div>
       </div>
     </div>
+    <div class="panel" id="ispuIspaPanel">
+      <h2>ISPU Resmi &amp; Kasus ISPA Harian <span class="hint">mengikuti rentang tanggal &amp; kecamatan di atas</span></h2>
+      <canvas id="ispuIspaChart"></canvas>
+      <div class="status-msg" id="ispuIspaStatus"></div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button type="button" class="btn secondary" onclick="downloadChartJPG('ispuIspaChart','ispu-vs-kasus-ispa')">⬇ JPG</button>
+        <button type="button" class="btn secondary" onclick="downloadChartPDF('ispuIspaChart','Rata-rata ISPU Harian dan Kasus ISPA')">⬇ PDF</button>
+      </div>
+
+      <div style="margin-top:20px; border-top:1px solid var(--line); padding-top:14px;">
+        <label style="font-size:0.75rem; color:var(--muted); font-weight:600; display:block;">Jeda waktu antara naiknya ISPU dan naiknya kasus ISPA</label>
+        <p id="lagRingkasan" style="font-size:0.85rem; margin:6px 0 10px; line-height:1.45;"></p>
+        <canvas id="lagChart" style="max-height:170px;"></canvas>
+        <div class="btn-row" style="margin-top:10px;">
+          <button type="button" class="btn secondary" onclick="downloadChartJPG('lagChart','analisis-jeda-ispu-ispa')">⬇ JPG</button>
+        </div>
+        <p style="font-size:0.72rem; color:var(--muted); margin:10px 0 0; line-height:1.5;">
+          Cara membaca: batang pada jeda 2 hari menunjukkan seberapa kuat rata-rata ISPU hari H berhubungan dengan jumlah kasus ISPA pada hari H+2
+          (korelasi Spearman, dari −1 sampai 1). Batang tertinggi adalah jeda yang paling cocok.
+          Ini indikasi awal, bukan bukti sebab-akibat: hasilnya dipengaruhi kelengkapan laporan Puskesmas, hari libur, dan fakta bahwa ISPU hanya diukur di satu stasiun (Kec. Selat).
+          Rata-rata ISPU harian dihitung bila tersedia minimal 18 dari 24 jam data; hari ini belum ikut dianalisis karena datanya belum lengkap.
+        </p>
+      </div>
+    </div>
   </div>
 
   <!-- KOLOM KANAN: REKAP HARIAN + REKAP PER PERIODE -->
@@ -1428,7 +1452,7 @@ function ispuKlhAngka(v){
 }
 
 async function loadIspuKlh(hari){
-  hari = hari || Math.max(ispuKlhRentang, 7);
+  hari = hari || Math.max(ispuKlhRentang, 7, ispuKlhHariDimuat);
   if (!SCRIPT_URL) return;
   try{
     const res = await fetch(`${SCRIPT_URL}?action=ispuKlh&hari=${hari}`);
@@ -1604,6 +1628,201 @@ function downloadIspuKlhExcel(){
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "ISPU per jam");
   XLSX.writeFile(wb, `ispu-resmi-kapuas-${ispuKlhRentang}hari-${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+/* ======================================================
+   4c. HUBUNGAN ISPU RESMI & KASUS ISPA (rata-rata harian + analisis jeda)
+====================================================== */
+const ISPU_LAG_MAKS = 7;        // jeda yang diuji: 0..7 hari
+const ISPU_MIN_JAM_HARIAN = 18; // kelengkapan minimal data per hari (75%)
+const ISPU_MIN_PASANGAN = 10;   // jumlah hari minimal agar korelasi ditampilkan
+let ispuKlhHariDiminta = 0;
+let ispuIspaChart, lagChart;
+
+function geserTanggal(t, n){
+  const d = new Date(t + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function tanggalHariIniWIB(){
+  return new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+}
+
+// { "2026-10-18": { mean, max, n } } dari data per jam
+function ispuKlhHarian(){
+  const kelompok = {};
+  ispuKlhData.forEach(r => {
+    const v = ispuKlhAngka(r.ispu);
+    if (v === null) return;
+    const t = String(r.waktu).slice(0, 10);
+    if (!kelompok[t]) kelompok[t] = [];
+    kelompok[t].push(v);
+  });
+  const hasil = {};
+  Object.keys(kelompok).forEach(t => {
+    const a = kelompok[t];
+    hasil[t] = { mean: a.reduce((s, x) => s + x, 0) / a.length, max: Math.max(...a), n: a.length };
+  });
+  return hasil;
+}
+
+function peringkat(arr){
+  const urut = arr.map((v, i) => [v, i]).sort((a, b) => a[0] - b[0]);
+  const r = new Array(arr.length);
+  for (let i = 0; i < urut.length; ){
+    let j = i;
+    while (j + 1 < urut.length && urut[j + 1][0] === urut[i][0]) j++;
+    const rata = (i + j) / 2 + 1;
+    for (let k = i; k <= j; k++) r[urut[k][1]] = rata;
+    i = j + 1;
+  }
+  return r;
+}
+
+function korelasiSpearman(xs, ys){
+  const rx = peringkat(xs), ry = peringkat(ys), n = xs.length;
+  const mx = rx.reduce((s, v) => s + v, 0) / n, my = ry.reduce((s, v) => s + v, 0) / n;
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++){
+    sxy += (rx[i] - mx) * (ry[i] - my);
+    sxx += (rx[i] - mx) ** 2;
+    syy += (ry[i] - my) ** 2;
+  }
+  return (sxx === 0 || syy === 0) ? null : sxy / Math.sqrt(sxx * syy);
+}
+
+function kekuatanKorelasi(r){
+  const a = Math.abs(r);
+  if (a < 0.3) return "lemah";
+  if (a < 0.5) return "sedang";
+  return "kuat";
+}
+
+function renderIspuIspaChart(){
+  const canvas = document.getElementById("ispuIspaChart");
+  if (!canvas) return;
+  const startDate = document.getElementById("trendDari").value;
+  const endDate = document.getElementById("trendSampai").value;
+  if (!startDate || !endDate) return;
+  const filterKec = document.getElementById("trendKecFilter").value;
+
+  // Pastikan arsip ISPU mencakup rentang + jeda maksimum (maks. 90 hari)
+  const butuh = Math.min(90,
+    Math.ceil((Date.now() - new Date(startDate + "T00:00:00+07:00").getTime()) / 86400000) + ISPU_LAG_MAKS + 1);
+  if (SCRIPT_URL && butuh > ispuKlhHariDimuat && butuh > ispuKlhHariDiminta){
+    ispuKlhHariDiminta = butuh;
+    setStatus("ispuIspaStatus", "Memuat arsip ISPU...", "");
+    loadIspuKlh(butuh).then(() => { renderIspuIspaChart(); renderIspuKlhChart(); });
+    return;
+  }
+
+  const { days, values } = computeTrendSeries(startDate, endDate, filterKec);
+  const harian = ispuKlhHarian();
+  const ispuHari = t => (harian[t] && harian[t].n >= ISPU_MIN_JAM_HARIAN) ? harian[t].mean : null;
+  const seriISPU = days.map(t => { const v = ispuHari(t); return v === null ? null : Math.round(v); });
+  const namaWilayah = filterKec === "ALL" ? "semua kecamatan" : "Kec. " + filterKec;
+
+  // --- Grafik gabungan ---
+  if (ispuIspaChart) ispuIspaChart.destroy();
+  ispuIspaChart = new Chart(canvas, {
+    data: {
+      labels: days.map(d => d.slice(5)),
+      datasets: [
+        { type: "line", label: "Rata-rata ISPU harian (stasiun Selat)", data: seriISPU, yAxisID: "y1",
+          borderColor: "#12303a", backgroundColor: "#12303a", borderWidth: 2, tension: 0.2, spanGaps: false,
+          pointRadius: 3,
+          pointBackgroundColor: seriISPU.map(v => kategoriWarna(ispuKlhKategori(v))),
+          pointBorderColor: seriISPU.map(v => kategoriWarna(ispuKlhKategori(v))) },
+        { type: "bar", label: `Kasus ISPA (${namaWilayah})`, data: values, yAxisID: "y",
+          backgroundColor: "rgba(15,92,92,0.35)", borderColor: "#0f5c5c", borderWidth: 1 }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: true, labels: { font: { size: 10 }, boxWidth: 18 } },
+        tooltip: { callbacks: { afterBody: items => {
+          const t = days[items[0].dataIndex];
+          const h = harian[t];
+          if (!h) return "ISPU: belum ada data";
+          return `ISPU maks. hari ini: ${h.max} · data ${h.n} dari 24 jam` + (h.n < ISPU_MIN_JAM_HARIAN ? " (belum lengkap)" : "");
+        } } }
+      },
+      scales: {
+        y:  { beginAtZero: true, position: "left", ticks: { precision: 0, font: { size: 10 } },
+              title: { display: true, text: "Kasus ISPA", font: { size: 10 } } },
+        y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, ticks: { font: { size: 10 } },
+              title: { display: true, text: "Rata-rata ISPU", font: { size: 10 } } },
+        x:  { ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+
+  const hariIspu = seriISPU.filter(v => v !== null).length;
+  setStatus("ispuIspaStatus", hariIspu
+    ? `${hariIspu} dari ${days.length} hari dalam rentang memiliki rata-rata ISPU lengkap.`
+    : "Belum ada hari dengan data ISPU lengkap dalam rentang ini. Arsip ISPU dimulai 17 Oktober 2026.",
+    hariIspu ? "" : "err");
+
+  // --- Analisis jeda: ISPU hari H vs kasus hari H+L ---
+  const hariIni = tanggalHariIniWIB();
+  const hasil = [];
+  for (let L = 0; L <= ISPU_LAG_MAKS; L++){
+    const xs = [], ys = [];
+    days.forEach((t, i) => {
+      if (t >= hariIni) return; // kasus hari ini belum lengkap
+      const x = ispuHari(geserTanggal(t, -L));
+      if (x === null) return;
+      xs.push(x); ys.push(values[i]);
+    });
+    hasil.push({ lag: L, n: xs.length, rho: xs.length >= ISPU_MIN_PASANGAN ? korelasiSpearman(xs, ys) : null });
+  }
+
+  const valid = hasil.filter(h => h.rho !== null);
+  const terbaik = valid.length ? valid.reduce((a, b) => (b.rho > a.rho ? b : a)) : null;
+  const ringkas = document.getElementById("lagRingkasan");
+
+  if (!terbaik){
+    const nMaks = Math.max(...hasil.map(h => h.n));
+    ringkas.innerHTML = `Data belum cukup untuk analisis jeda. Diperlukan minimal <strong>${ISPU_MIN_PASANGAN} hari</strong> ` +
+      `yang memiliki rata-rata ISPU lengkap sekaligus data kasus; saat ini baru <strong>${nMaks} hari</strong>. ` +
+      `Analisis akan muncul otomatis begitu arsip ISPU terkumpul.`;
+  } else if (terbaik.rho <= 0){
+    ringkas.innerHTML = `Belum terlihat hubungan searah antara rata-rata ISPU dan kasus ISPA di ${namaWilayah} ` +
+      `pada jeda 0–${ISPU_LAG_MAKS} hari dalam rentang ini.`;
+  } else {
+    const rho = terbaik.rho.toFixed(2).replace(".", ",");
+    ringkas.innerHTML = `Hubungan paling kuat terlihat pada <strong>jeda ${terbaik.lag} hari</strong> ` +
+      `(ρ = ${rho}, ${kekuatanKorelasi(terbaik.rho)}; ${terbaik.n} hari): kenaikan rata-rata ISPU cenderung diikuti ` +
+      `kenaikan kasus ISPA di ${namaWilayah} sekitar ${terbaik.lag === 0 ? "pada hari yang sama" : terbaik.lag + " hari kemudian"}.`;
+  }
+
+  const lagCanvas = document.getElementById("lagChart");
+  if (lagChart) lagChart.destroy();
+  lagChart = new Chart(lagCanvas, {
+    type: "bar",
+    data: {
+      labels: hasil.map(h => h.lag === 0 ? "Hari sama" : `${h.lag} hari`),
+      datasets: [{
+        label: "Korelasi Spearman (ρ)",
+        data: hasil.map(h => h.rho === null ? null : Number(h.rho.toFixed(2))),
+        backgroundColor: hasil.map(h => (terbaik && h.lag === terbaik.lag && terbaik.rho > 0) ? "#c97a2c" : "rgba(15,92,92,0.45)")
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { afterLabel: ctx => `n = ${hasil[ctx.dataIndex].n} hari` } }
+      },
+      scales: {
+        y: { min: -1, max: 1, ticks: { stepSize: 0.5, font: { size: 10 } } },
+        x: { ticks: { font: { size: 10 } } }
+      }
+    }
+  });
 }
 
 /* ======================================================
@@ -2199,6 +2418,7 @@ function renderTrendChart(){
       scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
     }
   });
+  renderIspuIspaChart();
 }
 
 let kecamatanBarChart;
