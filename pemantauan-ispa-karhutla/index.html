@@ -25,6 +25,12 @@
     --tidak-sehat:#d9a53a;
     --sangat-tidak-sehat:#c9542f;
     --berbahaya:#5a1f2b;
+    /* Warna kategori ISPU standar (hijau, biru, kuning, merah, hitam) */
+    --ispu-baik:#22b14c;
+    --ispu-sedang:#1e5bd8;
+    --ispu-tidak-sehat:#f2c500;
+    --ispu-sangat-tidak-sehat:#e02424;
+    --ispu-berbahaya:#000000;
     --radius:10px;
   }
   *{box-sizing:border-box;}
@@ -418,11 +424,11 @@
         Tampilkan arah &amp; kecepatan angin real-time
       </label>
       <div class="legend">
-        <span><i style="background:var(--good)"></i> Baik (0–50)</span>
-        <span><i style="background:var(--sedang)"></i> Sedang (51–100)</span>
-        <span><i style="background:var(--tidak-sehat)"></i> Tidak Sehat (101–199)</span>
-        <span><i style="background:var(--sangat-tidak-sehat)"></i> Sangat Tidak Sehat (200–299)</span>
-        <span><i style="background:var(--berbahaya)"></i> Berbahaya (&gt;300)</span>
+        <span><i style="background:var(--ispu-baik)"></i> Baik (0–50)</span>
+        <span><i style="background:var(--ispu-sedang)"></i> Sedang (51–100)</span>
+        <span><i style="background:var(--ispu-tidak-sehat)"></i> Tidak Sehat (101–200)</span>
+        <span><i style="background:var(--ispu-sangat-tidak-sehat)"></i> Sangat Tidak Sehat (201–300)</span>
+        <span><i style="background:var(--ispu-berbahaya)"></i> Berbahaya (&gt;300)</span>
         <span><i style="background:#999"></i> Belum ada data</span>
         <span><i style="background:#ff4500; width:7px; height:7px;"></i> Titik hotspot (FIRMS)</span>
         <span>🔥 Titik api lapangan (terverifikasi petugas)</span>
@@ -1238,13 +1244,30 @@ function stopWindAnimation(){
 }
 
 
+/* Warna kategori ISPU standar, dipakai seragam di peta, tabel, grafik, dan modal */
+const ISPU_WARNA = {
+  baik: "#22b14c",
+  sedang: "#1e5bd8",
+  tidakSehat: "#f2c500",
+  sangatTidakSehat: "#e02424",
+  berbahaya: "#000000"
+};
+// Teks di atas latar warna kategori: gelap untuk kuning, putih untuk lainnya
+function warnaTeksDiAtas(bg){
+  return bg === ISPU_WARNA.tidakSehat ? "#1a1a1a" : "#ffffff";
+}
+// Warna angka/teks di atas latar putih: kuning digelapkan agar terbaca
+function warnaTeksKategori(bg){
+  return bg === ISPU_WARNA.tidakSehat ? "#a88900" : bg;
+}
+
 function statusFromScore(score){
   if (score === null || score === undefined) return { label: "Belum ada data", color: "#999" };
-  if (score <= 50)  return { label: "Baik", color: "var(--good)".replace('var(--good)', '#3f8f5f') };
-  if (score <= 100) return { label: "Sedang", color: "#4f8fbf" };
-  if (score <= 199) return { label: "Tidak Sehat", color: "#d9a53a" };
-  if (score <= 299) return { label: "Sangat Tidak Sehat", color: "#c9542f" };
-  return { label: "Berbahaya", color: "#5a1f2b" };
+  if (score <= 50)  return { label: "Baik", color: ISPU_WARNA.baik };
+  if (score <= 100) return { label: "Sedang", color: ISPU_WARNA.sedang };
+  if (score <= 200) return { label: "Tidak Sehat", color: ISPU_WARNA.tidakSehat };
+  if (score <= 300) return { label: "Sangat Tidak Sehat", color: ISPU_WARNA.sangatTidakSehat };
+  return { label: "Berbahaya", color: ISPU_WARNA.berbahaya };
 }
 
 /* Sumber nilai ISPU per kecamatan, urutan prioritas:
@@ -1353,11 +1376,11 @@ function updateMarkers(){
 ====================================================== */
 function kategoriWarna(label){
   const l = (label || "").toUpperCase();
-  if (l.includes("BERBAHAYA")) return "#5a1f2b";
-  if (l.includes("SANGAT TIDAK SEHAT")) return "#c9542f";
-  if (l.includes("TIDAK SEHAT")) return "#d9a53a";
-  if (l.includes("SEDANG")) return "#4f8fbf";
-  if (l.includes("BAIK")) return "#3f8f5f";
+  if (l.includes("BERBAHAYA")) return ISPU_WARNA.berbahaya;
+  if (l.includes("SANGAT TIDAK SEHAT")) return ISPU_WARNA.sangatTidakSehat;
+  if (l.includes("TIDAK SEHAT")) return ISPU_WARNA.tidakSehat;
+  if (l.includes("SEDANG")) return ISPU_WARNA.sedang;
+  if (l.includes("BAIK")) return ISPU_WARNA.baik;
   return "#999";
 }
 
@@ -1377,7 +1400,7 @@ function tampilkanDetailISPUResmi(namaKec){
   const tabelParameter = parts.map(([nama, sub, kons, satuan]) => `
     <tr>
       <td style="font-weight:600;">${nama}</td>
-      <td><span class="status-pill" style="background:${kategoriWarna(o.kategori)}; opacity:${sub===null||sub===undefined ? 0.3 : 1};">${sub ?? "-"}</span></td>
+      <td><span class="status-pill" style="background:${kategoriWarna(o.kategori)}; color:${warnaTeksDiAtas(kategoriWarna(o.kategori))}; opacity:${sub===null||sub===undefined ? 0.3 : 1};">${sub ?? "-"}</span></td>
       <td>${kons ?? "-"} ${kons!==undefined && kons!==null ? satuan : ""}</td>
     </tr>
   `).join("");
@@ -1398,8 +1421,8 @@ function tampilkanDetailISPUResmi(namaKec){
 
   const html = `
     <div style="text-align:center; margin-bottom:16px;">
-      <div style="display:inline-block; width:90px; height:90px; border-radius:50%; background:${kategoriWarna(o.kategori)}; color:#fff; font-size:2rem; font-weight:700; line-height:90px;">${o.ispu ?? "-"}</div>
-      <div style="font-size:1.1rem; font-weight:700; margin-top:8px; color:${kategoriWarna(o.kategori)};">${o.kategori || "-"}</div>
+      <div style="display:inline-block; width:90px; height:90px; border-radius:50%; background:${kategoriWarna(o.kategori)}; color:${warnaTeksDiAtas(kategoriWarna(o.kategori))}; font-size:2rem; font-weight:700; line-height:90px;">${o.ispu ?? "-"}</div>
+      <div style="font-size:1.1rem; font-weight:700; margin-top:8px; color:${warnaTeksKategori(kategoriWarna(o.kategori))};">${o.kategori || "-"}</div>
       <div style="font-size:0.8rem; color:var(--muted);">Parameter kritis: <strong>${o.parameterKritis}</strong> · Update: ${o.waktu}</div>
     </div>
     <table style="width:100%;">
@@ -1502,21 +1525,36 @@ function setIspuKlhRentang(hari){
   }
 }
 
-// Pita warna kategori ISPU di latar grafik
+// Pita warna kategori ISPU di latar grafik (warna standar ISPU: hijau, biru, kuning, merah, hitam)
+const ISPU_PITA = [
+  { a: 0,   b: 50,     warna: ISPU_WARNA.baik, alpha: 0.22, label: "Baik" },
+  { a: 50,  b: 100,    warna: ISPU_WARNA.sedang, alpha: 0.20, label: "Sedang" },
+  { a: 100, b: 200,    warna: ISPU_WARNA.tidakSehat, alpha: 0.32, label: "Tidak Sehat" },
+  { a: 200, b: 300,    warna: ISPU_WARNA.sangatTidakSehat, alpha: 0.24, label: "Sangat Tidak Sehat" },
+  { a: 300, b: 100000, warna: ISPU_WARNA.berbahaya, alpha: 0.30, label: "Berbahaya" }
+];
 const ispuKlhBandPlugin = {
   id: "ispuKlhBands",
   beforeDatasetsDraw(chart){
     const { ctx, chartArea, scales: { y } } = chart;
     if (!chartArea) return;
-    const bands = [[0,50,"#3f8f5f"],[50,100,"#4f8fbf"],[100,200,"#d9a53a"],[200,300,"#c9542f"],[300,100000,"#5a1f2b"]];
     ctx.save();
-    ctx.globalAlpha = 0.09;
-    bands.forEach(([a, b, warna]) => {
-      if (a >= y.max) return;
-      const yAtas = y.getPixelForValue(Math.min(b, y.max));
-      const yBawah = y.getPixelForValue(Math.max(a, y.min));
-      ctx.fillStyle = warna;
-      ctx.fillRect(chartArea.left, yAtas, chartArea.right - chartArea.left, yBawah - yAtas);
+    ISPU_PITA.forEach(p => {
+      if (p.a >= y.max) return;
+      const yAtas = y.getPixelForValue(Math.min(p.b, y.max));
+      const yBawah = y.getPixelForValue(Math.max(p.a, y.min));
+      const tinggi = yBawah - yAtas;
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = p.warna;
+      ctx.fillRect(chartArea.left, yAtas, chartArea.right - chartArea.left, tinggi);
+      // Nama kategori di tepi kiri pita (hanya jika pitanya cukup tinggi)
+      if (tinggi >= 14){
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = p.warna === ISPU_WARNA.tidakSehat ? "#7a6200" : p.warna;
+        ctx.font = "600 10px 'Segoe UI', Roboto, sans-serif";
+        ctx.textBaseline = "top";
+        ctx.fillText(p.label, chartArea.left + 6, yAtas + 3);
+      }
     });
     ctx.restore();
   }
@@ -1564,10 +1602,10 @@ function renderIspuKlhChart(){
   const vAkhir = ispuKlhAngka(terakhir.ispu);
   const vMax = nilai.length ? Math.max(...nilai) : null;
   elNow.textContent = vAkhir ?? "-";
-  elNow.style.color = kategoriWarna(terakhir.kategori || ispuKlhKategori(vAkhir));
+  elNow.style.color = warnaTeksKategori(kategoriWarna(terakhir.kategori || ispuKlhKategori(vAkhir)));
   document.getElementById("ispuKlhNowLbl").textContent = "ISPU " + ispuKlhLabelJam(t1) + " WIB";
   elMax.textContent = vMax ?? "-";
-  elMax.style.color = kategoriWarna(ispuKlhKategori(vMax));
+  elMax.style.color = warnaTeksKategori(kategoriWarna(ispuKlhKategori(vMax)));
   elBahaya.textContent = nilai.filter(v => v > 300).length;
   elBahaya.style.color = "";
 
@@ -2332,7 +2370,7 @@ function renderRecapTable(){
       tr.innerHTML = `
         <td>${p.nama}</td>
         <td>${p.kecamatan}</td>
-        <td><span class="status-pill" style="background:${st.color}">${st.label}</span></td>
+        <td><span class="status-pill" style="background:${st.color}; color:${warnaTeksDiAtas(st.color)}">${st.label}</span></td>
         <td>${kasus}</td>
       `;
       tbody.appendChild(tr);
@@ -2360,7 +2398,7 @@ function renderRecapTable(){
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${k.nama}</td>
-        <td><span class="status-pill" style="background:${st.color}">${st.label}</span></td>
+        <td><span class="status-pill" style="background:${st.color}; color:${warnaTeksDiAtas(st.color)}">${st.label}</span></td>
         <td>${hs}</td>
         <td>${kasus}</td>
       `;
