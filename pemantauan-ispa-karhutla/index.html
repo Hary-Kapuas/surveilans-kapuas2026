@@ -435,7 +435,7 @@
       </div>
       <div class="banner">
         <strong class="banner-title">Catatan penting soal data ISPU</strong>
-        Sejak Juli 2024, Kabupaten Kapuas sudah punya <strong>1 stasiun AQMS resmi KLHK</strong> (lokasi: Kel. Selat Hulu, Kec. Selat) — kecamatan Selat kini otomatis memakai data ISPU RESMI dari stasiun tersebut, diperbarui otomatis. Untuk 16 kecamatan lainnya (belum ada stasiun), nilai ISPU tetap <em>estimasi</em>, dihitung dari jumlah titik panas (hotspot) NASA FIRMS ditambah nilai dasar PM2.5 regional — gunakan sebagai indikator dini, bukan pengganti pengukuran resmi. Titik oranye kecil menandakan lokasi hotspot individual yang terdeteksi satelit dalam 2 hari terakhir.
+        Sejak Juli 2024, Kabupaten Kapuas sudah punya <strong>1 stasiun AQMS resmi KLHK</strong> (lokasi: Kel. Selat Hulu, Kec. Selat) — kecamatan Selat kini otomatis memakai data ISPU RESMI dari stasiun tersebut, diperbarui otomatis. Jika KLH menarik stasiun dari portal publiknya (misalnya saat perawatan atau kalibrasi) atau nilainya tidak sesuai konsentrasi, aplikasi akan menandainya dan Kec. Selat kembali memakai estimasi. Untuk 16 kecamatan lainnya (belum ada stasiun), nilai ISPU tetap <em>estimasi</em>, dihitung dari jumlah titik panas (hotspot) NASA FIRMS ditambah nilai dasar PM2.5 regional — gunakan sebagai indikator dini, bukan pengganti pengukuran resmi. Titik oranye kecil menandakan lokasi hotspot individual yang terdeteksi satelit dalam 2 hari terakhir.
       </div>
 
       <div style="margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);">
@@ -1292,18 +1292,28 @@ function sumberScore(namaKec){
   return "estimasi";
 }
 
+let ispuResmiInfo = null; // status terakhir dari backend (ok/tidak_dipublikasikan/perawatan/...)
+
 async function loadIspuResmi(){
   officialISPU = {};
+  ispuResmiInfo = null;
   if (!SCRIPT_URL) return;
   try{
     const res = await fetch(`${SCRIPT_URL}?action=ispu_resmi`);
     const data = await res.json();
+    ispuResmiInfo = data;
     if (data.ok && data.ispu !== null){
       officialISPU[data.kecamatan] = data;
     }
   } catch(err){
-    // Diam-diam gagal — kecamatan tsb otomatis kembali pakai estimasi
+    // Gagal memuat — kecamatan tsb otomatis kembali pakai estimasi
   }
+}
+
+// true bila KLH sendiri menyatakan stasiun sedang tidak dipublikasikan / perawatan
+function stasiunDitarikKlh(){
+  return !!(ispuResmiInfo && !ispuResmiInfo.ok &&
+    (ispuResmiInfo.status === "tidak_dipublikasikan" || ispuResmiInfo.status === "perawatan"));
 }
 
 function initKecamatanShapes(){
@@ -1358,12 +1368,19 @@ function updateMarkers(){
     const hs = hotspotCounts[k.nama] ?? "-";
     const kasus = kasusHariIni[k.nama] ?? 0;
     const sumber = sumberScore(k.nama);
-    const labelSumber = sumber === "resmi" ? "resmi AQMS KLHK" : sumber === "manual" ? "manual" : "estimasi";
+    const oResmi = officialISPU[k.nama];
+    const labelSumber = sumber === "resmi"
+      ? (oResmi && oResmi.peringatan ? "resmi AQMS KLHK, perlu verifikasi" : "resmi AQMS KLHK")
+      : sumber === "manual" ? "manual" : "estimasi";
     let infoTambahan = "";
     if (sumber === "resmi"){
-      const o = officialISPU[k.nama];
+      const o = oResmi;
       infoTambahan = `<br>Kategori KLHK: ${o.kategori}<br>Parameter kritis: ${o.parameterKritis}<br>Update terakhir: ${o.waktu}` +
+        (o.peringatan ? `<br><span style="color:#b45309; font-weight:600;">⚠ Nilai ISPU tidak sesuai konsentrasinya, kemungkinan belum tervalidasi.</span>` : "") +
         `<br><a href="#" onclick="tampilkanDetailISPUResmi('${k.nama}'); return false;" style="color:var(--teal); font-weight:600;">📊 Lihat Detail Lengkap →</a>`;
+    } else if (ispuResmiInfo && !ispuResmiInfo.ok && ispuResmiInfo.kecamatan === k.nama){
+      infoTambahan = `<br><span style="color:#b45309; font-weight:600;">⚠ Data stasiun AQMS KLH sedang tidak tersedia` +
+        (stasiunDitarikKlh() ? " (ditarik dari portal publik KLH)" : "") + `. Status memakai estimasi.</span>`;
     }
     markers[k.nama].bindPopup(
       `<strong>${k.nama}</strong><br>Status: ${st.label} (${labelSumber})${infoTambahan}<br>Hotspot 24 jam: ${hs}<br>Kasus ISPA hari ini: ${kasus}`
@@ -1400,7 +1417,7 @@ function tampilkanDetailISPUResmi(namaKec){
   const tabelParameter = parts.map(([nama, sub, kons, satuan]) => `
     <tr>
       <td style="font-weight:600;">${nama}</td>
-      <td><span class="status-pill" style="background:${kategoriWarna(o.kategori)}; color:${warnaTeksDiAtas(kategoriWarna(o.kategori))}; opacity:${sub===null||sub===undefined ? 0.3 : 1};">${sub ?? "-"}</span></td>
+      <td><span class="status-pill" style="background:${kategoriWarna(ispuKlhKategori(ispuKlhAngka(sub)) || o.kategori)}; color:${warnaTeksDiAtas(kategoriWarna(ispuKlhKategori(ispuKlhAngka(sub)) || o.kategori))}; opacity:${sub===null||sub===undefined ? 0.3 : 1};">${sub ?? "-"}</span></td>
       <td>${kons ?? "-"} ${kons!==undefined && kons!==null ? satuan : ""}</td>
     </tr>
   `).join("");
@@ -1419,7 +1436,13 @@ function tampilkanDetailISPUResmi(namaKec){
     </p>
   ` : "";
 
+  const kotakPeringatan = o.peringatan ? `
+    <div style="background:#fff7e6; border:1px solid #f2c500; border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:0.8rem; line-height:1.45;">
+      <strong>⚠ Perlu verifikasi.</strong> ${o.peringatan}
+    </div>` : "";
+
   const html = `
+    ${kotakPeringatan}
     <div style="text-align:center; margin-bottom:16px;">
       <div style="display:inline-block; width:90px; height:90px; border-radius:50%; background:${kategoriWarna(o.kategori)}; color:${warnaTeksDiAtas(kategoriWarna(o.kategori))}; font-size:2rem; font-weight:700; line-height:90px;">${o.ispu ?? "-"}</div>
       <div style="font-size:1.1rem; font-weight:700; margin-top:8px; color:${warnaTeksKategori(kategoriWarna(o.kategori))};">${o.kategori || "-"}</div>
@@ -1493,6 +1516,7 @@ async function loadIspuKlh(hari){
    memakai nilai resmi terbaru dari arsip (maks. 6 jam), bukan estimasi. */
 function terapkanFallbackIspuKlh(){
   if (!ispuKlhData.length) return;
+  if (stasiunDitarikKlh()) return;
   const r = ispuKlhData[ispuKlhData.length - 1];
   if (!r.kecamatan || officialISPU[r.kecamatan]) return;
   const umurJam = (Date.now() - ispuKlhParseWaktu(r.waktu).getTime()) / 3600000;
@@ -1610,9 +1634,17 @@ function renderIspuKlhChart(){
   elBahaya.style.color = "";
 
   const kosong = labels.length - nilai.length;
-  setStatus("ispuKlhStatus",
-    `${nilai.length} jam data` + (kosong ? `, ${kosong} jam kosong` : "") +
-    `. Kategori terakhir: ${terakhir.kategori || ispuKlhKategori(vAkhir)} (parameter kritis ${terakhir.parameter_kritis || "-"}).`, "");
+  const umurJam = (Date.now() - t1) / 3600000;
+  if (umurJam > 6){
+    setStatus("ispuKlhStatus",
+      `Stasiun belum mengirim data baru sejak ${ispuKlhLabelJam(t1)} WIB` +
+      (stasiunDitarikKlh() ? ", karena stasiun Kapuas sedang ditarik dari portal publik KLH (kemungkinan perawatan, kalibrasi, atau data belum tervalidasi)" : "") +
+      `. Grafik menampilkan data terakhir yang valid; arsip berlanjut otomatis begitu stasiun tampil kembali.`, "err");
+  } else {
+    setStatus("ispuKlhStatus",
+      `${nilai.length} jam data` + (kosong ? `, ${kosong} jam kosong` : "") +
+      `. Kategori terakhir: ${terakhir.kategori || ispuKlhKategori(vAkhir)} (parameter kritis ${terakhir.parameter_kritis || "-"}).`, "");
+  }
 
   const banyak = labels.length > 72;
   ispuKlhChart = new Chart(canvas, {
