@@ -1380,7 +1380,8 @@ function updateMarkers(){
         `<br><a href="#" onclick="tampilkanDetailISPUResmi('${k.nama}'); return false;" style="color:var(--teal); font-weight:600;">📊 Lihat Detail Lengkap →</a>`;
     } else if (ispuResmiInfo && !ispuResmiInfo.ok && ispuResmiInfo.kecamatan === k.nama){
       infoTambahan = `<br><span style="color:#b45309; font-weight:600;">⚠ Data stasiun AQMS KLH sedang tidak tersedia` +
-        (stasiunDitarikKlh() ? " (ditarik dari portal publik KLH)" : "") + `. Status memakai estimasi.</span>`;
+        (stasiunDitarikKlh() ? " (ditarik dari portal publik KLH)" : "") +
+        `. Status memakai ${sumber === "manual" ? "input manual" : "estimasi"}.</span>`;
     }
     markers[k.nama].bindPopup(
       `<strong>${k.nama}</strong><br>Status: ${st.label} (${labelSumber})${infoTambahan}<br>Hotspot 24 jam: ${hs}<br>Kasus ISPA hari ini: ${kasus}`
