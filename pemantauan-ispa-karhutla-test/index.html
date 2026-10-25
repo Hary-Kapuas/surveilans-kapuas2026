@@ -1064,8 +1064,26 @@ function toggleWind(){
 }
 
 function refreshWindAll(){
-  loadWindData();
-  loadWindGrid();
+  // Panel & animasi memakai SATU sumber data (grid yang sama) supaya arah panah
+  // di panel selalu sama dengan arah gerak partikel di titik tengah Kapuas.
+  // Kalau grid gagal dimuat, panel jatuh ke pembacaan satu titik (cadangan).
+  loadWindGrid().then(ok => {
+    if (ok) tampilkanPanelAnginDariGrid(); else loadWindData();
+  });
+}
+
+function tampilkanPanelAnginDariGrid(){
+  if (!windGrid) return;
+  const { u, v } = sampleWindGrid(WIND_LAT, WIND_LNG);       // m/s, arah TUJUAN angin
+  const kmh = Math.hypot(u, v) * 3.6;
+  const menujuDeg = (Math.atan2(u, v) * 180 / Math.PI + 360) % 360;
+  const dariDeg = (menujuDeg + 180) % 360;
+  const arrowEl = document.getElementById("windArrow");
+  const txtEl = document.getElementById("windTxt");
+  if (arrowEl) arrowEl.style.transform = `rotate(${menujuDeg}deg)`;
+  if (txtEl){
+    txtEl.innerHTML = `Angin dari <b>${labelArahAngin(dariDeg)}</b><br>menuju ${labelArahAngin(menujuDeg)} &middot; ${kmh.toFixed(0)} km/jam<div class="muted2">Update: ${(windGridWaktu || "").replace('T',' ')} WIB</div>`;
+  }
 }
 
 async function loadWindData(){
@@ -1105,6 +1123,7 @@ const WIND_ANIM_DT_SECONDS = 22; // "waktu simulasi" yang dilaju tiap frame — 
 const WIND_TRAIL_LEN = 7;
 
 let windGrid = null;
+let windGridWaktu = "";
 let windCanvas = null, windCtx = null;
 let windParticles = [];
 let windAnimFrameId = null;
@@ -1168,8 +1187,11 @@ async function loadWindGrid(){
       return { u: -speed * Math.sin(rad), v: -speed * Math.cos(rad), speed };
     });
     windGrid = { ...WIND_BOUNDS, rows: WIND_GRID_ROWS, cols: WIND_GRID_COLS, cells };
+    windGridWaktu = (list[0] && list[0].current && list[0].current.time) || "";
+    return true;
   } catch(err){
     windGrid = null; // animasi berhenti bergerak (partikel diam) sampai berhasil lagi
+    return false;
   }
 }
 
@@ -1224,14 +1246,23 @@ function drawWindFrame(){
   windParticles.forEach(p => {
     stepWindParticle(p);
     if (p.trail.length < 2) return;
-    windCtx.strokeStyle = windSpeedColor(p.lastSpeed || 0);
-    windCtx.lineWidth = 1.2;
+    // Ekor memudar, kepala (ujung terbaru) paling terang: arah gerak jadi terbaca.
+    const warna = windSpeedColor(p.lastSpeed || 0);
+    const pts = p.trail.map(pt => map.latLngToContainerPoint([pt.lat, pt.lng]));
+    windCtx.strokeStyle = warna;
+    windCtx.lineWidth = 1.4;
+    for (let i = 1; i < pts.length; i++){
+      windCtx.globalAlpha = i / pts.length;
+      windCtx.beginPath();
+      windCtx.moveTo(pts[i-1].x, pts[i-1].y);
+      windCtx.lineTo(pts[i].x, pts[i].y);
+      windCtx.stroke();
+    }
+    windCtx.globalAlpha = 1;
+    windCtx.fillStyle = warna;
     windCtx.beginPath();
-    p.trail.forEach((pt, i) => {
-      const px = map.latLngToContainerPoint([pt.lat, pt.lng]);
-      if (i === 0) windCtx.moveTo(px.x, px.y); else windCtx.lineTo(px.x, px.y);
-    });
-    windCtx.stroke();
+    windCtx.arc(pts[pts.length-1].x, pts[pts.length-1].y, 1.8, 0, Math.PI * 2);
+    windCtx.fill();
   });
   windAnimFrameId = requestAnimationFrame(drawWindFrame);
 }
