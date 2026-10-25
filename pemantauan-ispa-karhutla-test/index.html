@@ -437,7 +437,7 @@
       </div>
       <div class="banner">
         <strong class="banner-title">Catatan penting soal data ISPU</strong>
-        Sejak Juli 2024, Kabupaten Kapuas sudah punya <strong>1 stasiun AQMS resmi KLHK</strong> (lokasi: Kel. Selat Hulu, Kec. Selat) — kecamatan Selat kini otomatis memakai data ISPU RESMI dari stasiun tersebut, diperbarui otomatis. Jika KLH menarik stasiun dari portal publiknya (misalnya saat perawatan atau kalibrasi) atau nilainya tidak sesuai konsentrasi, aplikasi akan menandainya dan Kec. Selat kembali memakai estimasi. Untuk 16 kecamatan lainnya (belum ada stasiun), nilai ISPU tetap <em>estimasi</em>, dihitung dari jumlah titik panas (hotspot) NASA FIRMS ditambah nilai dasar PM2.5 regional — gunakan sebagai indikator dini, bukan pengganti pengukuran resmi. Titik oranye kecil menandakan lokasi hotspot individual yang terdeteksi satelit dalam 2 hari terakhir.
+        Sejak Juli 2024, Kabupaten Kapuas sudah punya <strong>1 stasiun AQMS resmi KLHK</strong> (lokasi: Kel. Selat Hulu, Kec. Selat) — kecamatan Selat kini otomatis memakai data ISPU RESMI dari stasiun tersebut, diperbarui otomatis. Jika KLH menarik stasiun dari portal publiknya (misalnya saat perawatan atau kalibrasi), Kec. Selat kembali memakai estimasi. Jika nilainya tidak sesuai dengan konsentrasinya, nilai stasiun tetap dipakai tetapi ditandai "perlu verifikasi". Untuk 16 kecamatan lainnya (belum ada stasiun), nilai ISPU tetap <em>estimasi</em>, dihitung dari jumlah titik panas (hotspot) NASA FIRMS ditambah nilai dasar PM2.5 regional — gunakan sebagai indikator dini, bukan pengganti pengukuran resmi. Titik oranye kecil menandakan lokasi hotspot individual yang terdeteksi satelit dalam 2 hari terakhir.
       </div>
 
       <div style="margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);">
@@ -700,7 +700,7 @@
     <div class="panel">
       <h2>Input Manual ISPU (opsional)</h2>
       <p style="font-size:0.78rem;color:var(--muted);margin-top:0;">
-        Jika Bapak/Ibu punya angka ISPU/AQI lebih akurat dari petugas lapangan atau sumber lain (mis. BMKG terdekat), masukkan di sini untuk menimpa nilai estimasi otomatis kecamatan tersebut.
+        Jika Bapak/Ibu punya angka ISPU/AQI lebih akurat dari petugas lapangan atau sumber lain (mis. BMKG terdekat), masukkan di sini untuk menimpa nilai estimasi otomatis kecamatan tersebut. Nilai manual berlaku 24 jam sejak diinput; setelah itu kecamatan kembali memakai estimasi otomatis.
       </p>
       <form id="ispuForm">
         <label>Kecamatan</label>
@@ -972,6 +972,9 @@ let hotspotCounts = {};   // { "Selat": 3, ... }
 let hotspotPoints = [];   // [{lat, lng}, ...] titik individual dari FIRMS
 let hotspotLayerGroup = null;
 let manualISPU = {};      // { "Selat": 120, ... } input manual (opsional, override)
+// Nilai manual hanya berlaku sekian jam sejak diinput; setelah itu kecamatan kembali
+// memakai estimasi otomatis (hotspot) sampai ada input manual yang baru.
+const MANUAL_ISPU_BERLAKU_JAM = 24;
 let officialISPU = {};    // { "Selat": {ispu, kategori, waktu, param, pm25} } data RESMI dari AQMS KLHK
 let kasusHariIni = {};    // { "Selat": 5, ... } total per kecamatan hari ini
 let laporanPuskesmasHariIni = {}; // { "Puskesmas Selat": 3, ... } per puskesmas hari ini
@@ -2322,7 +2325,12 @@ async function loadRecap(){
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     allRecords = data.records || [];
+    const batasWaktu = Date.now() - MANUAL_ISPU_BERLAKU_JAM * 60 * 60 * 1000;
     (data.manual_ispu || []).forEach(m => {
+      // Backend versi baru mengirim m.waktu (kapan diinput). Backend lama tidak
+      // mengirimnya — dalam kasus itu nilai tetap dipakai seperti sebelumnya.
+      const t = m.waktu ? new Date(m.waktu).getTime() : NaN;
+      if (!isNaN(t) && t < batasWaktu) return; // sudah kedaluwarsa -> pakai estimasi
       manualISPU[m.kecamatan] = Number(m.nilai);
     });
   } catch(err){
