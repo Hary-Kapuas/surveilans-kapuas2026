@@ -437,7 +437,7 @@
       </div>
       <div class="banner">
         <strong class="banner-title">Catatan penting soal data ISPU</strong>
-        Sejak Juli 2024, Kabupaten Kapuas sudah punya <strong>1 stasiun AQMS resmi KLHK</strong> (lokasi: Kel. Selat Hulu, Kec. Selat) — kecamatan Selat kini otomatis memakai data ISPU RESMI dari stasiun tersebut, diperbarui otomatis. Jika KLH menarik stasiun dari portal publiknya (misalnya saat perawatan atau kalibrasi) atau nilainya tidak sesuai konsentrasi, aplikasi akan menandainya dan Kec. Selat kembali memakai estimasi. Untuk 16 kecamatan lainnya (belum ada stasiun), nilai ISPU tetap <em>estimasi</em>, dihitung dari jumlah titik panas (hotspot) NASA FIRMS ditambah nilai dasar PM2.5 regional — gunakan sebagai indikator dini, bukan pengganti pengukuran resmi. Titik oranye kecil menandakan lokasi hotspot individual yang terdeteksi satelit dalam 2 hari terakhir.
+        Sejak Juli 2024, Kabupaten Kapuas sudah punya <strong>1 stasiun AQMS resmi KLHK</strong> (lokasi: Kel. Selat Hulu, Kec. Selat) — kecamatan Selat kini otomatis memakai data ISPU RESMI dari stasiun tersebut, diperbarui otomatis. Jika KLH menarik stasiun dari portal publiknya (misalnya saat perawatan atau kalibrasi), Kec. Selat kembali memakai estimasi. Jika nilainya tidak sesuai dengan konsentrasinya, nilai stasiun tetap dipakai tetapi ditandai "perlu verifikasi". Untuk 16 kecamatan lainnya (belum ada stasiun), nilai ISPU tetap <em>estimasi</em>, dihitung dari jumlah titik panas (hotspot) NASA FIRMS ditambah nilai dasar PM2.5 regional — gunakan sebagai indikator dini, bukan pengganti pengukuran resmi. Titik oranye kecil menandakan lokasi hotspot individual yang terdeteksi satelit dalam 2 hari terakhir.
       </div>
 
       <div style="margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);">
@@ -700,7 +700,7 @@
     <div class="panel">
       <h2>Input Manual ISPU (opsional)</h2>
       <p style="font-size:0.78rem;color:var(--muted);margin-top:0;">
-        Jika Bapak/Ibu punya angka ISPU/AQI lebih akurat dari petugas lapangan atau sumber lain (mis. BMKG terdekat), masukkan di sini untuk menimpa nilai estimasi otomatis kecamatan tersebut.
+        Jika Bapak/Ibu punya angka ISPU/AQI lebih akurat dari petugas lapangan atau sumber lain (mis. BMKG terdekat), masukkan di sini untuk menimpa nilai estimasi otomatis kecamatan tersebut. Nilai manual berlaku 24 jam sejak diinput; setelah itu kecamatan kembali memakai estimasi otomatis.
       </p>
       <form id="ispuForm">
         <label>Kecamatan</label>
@@ -972,6 +972,9 @@ let hotspotCounts = {};   // { "Selat": 3, ... }
 let hotspotPoints = [];   // [{lat, lng}, ...] titik individual dari FIRMS
 let hotspotLayerGroup = null;
 let manualISPU = {};      // { "Selat": 120, ... } input manual (opsional, override)
+// Nilai manual hanya berlaku sekian jam sejak diinput; setelah itu kecamatan kembali
+// memakai estimasi otomatis (hotspot) sampai ada input manual yang baru.
+const MANUAL_ISPU_BERLAKU_JAM = 24;
 let officialISPU = {};    // { "Selat": {ispu, kategori, waktu, param, pm25} } data RESMI dari AQMS KLHK
 let kasusHariIni = {};    // { "Selat": 5, ... } total per kecamatan hari ini
 let laporanPuskesmasHariIni = {}; // { "Puskesmas Selat": 3, ... } per puskesmas hari ini
@@ -1054,7 +1057,7 @@ function toggleWind(){
   if (windVisible){
     map.addControl(windControl);
     refreshWindAll();
-    if (!windInterval) windInterval = setInterval(refreshWindAll, 15 * 60 * 1000); // refresh data tiap 15 menit
+    if (!windInterval) windInterval = setInterval(refreshWindAll, 30 * 60 * 1000); // refresh data tiap 30 menit (hemat kuota gratis Open-Meteo)
     startWindAnimation();
   } else {
     map.removeControl(windControl);
@@ -1116,9 +1119,12 @@ async function loadWindData(){
    Skala pergerakan bersifat stilasi (visual), bukan kecepatan
    real fisik, supaya tetap terlihat jelas di layar.
 ====================================================== */
-const WIND_BOUNDS = { latMin: -3.7, latMax: -0.2, lngMin: 113.5, lngMax: 115.0 }; // cakupan Kab. Kapuas + margin
-const WIND_GRID_ROWS = 5, WIND_GRID_COLS = 5;
-const WIND_PARTICLE_COUNT = 450;
+// Cakupan: seluruh Kalimantan Tengah + sekitarnya (Kalbar timur, Kaltim barat, Kalsel, Laut Jawa),
+// supaya asap dari kebakaran di luar Kapuas yang terbawa angin ke arah Kapuas ikut terbaca.
+// Grid 9 x 11 titik (jarak ±0,75° ≈ 80 km) = 99 titik per pembaruan.
+const WIND_BOUNDS = { latMin: -4.5, latMax: 1.5, lngMin: 109.5, lngMax: 117.0 };
+const WIND_GRID_ROWS = 9, WIND_GRID_COLS = 11;
+const WIND_PARTICLE_COUNT = 900;
 const WIND_ANIM_DT_SECONDS = 22; // "waktu simulasi" yang dilaju tiap frame — atur di sini kalau mau lebih cepat/lambat
 const WIND_TRAIL_LEN = 7;
 
@@ -1149,10 +1155,24 @@ function resizeWindCanvas(){
   windCanvas.height = size.y;
 }
 
+// Kotak area yang sedang terlihat di layar ∩ cakupan data angin. Partikel hanya
+// dilahirkan di sini, jadi kepadatannya tetap rata di layar berapa pun zoom-nya.
+let windViewBox = { ...WIND_BOUNDS };
+function updateWindViewBox(){
+  const b = map.getBounds();
+  const box = {
+    latMin: Math.max(WIND_BOUNDS.latMin, b.getSouth()), latMax: Math.min(WIND_BOUNDS.latMax, b.getNorth()),
+    lngMin: Math.max(WIND_BOUNDS.lngMin, b.getWest()),  lngMax: Math.min(WIND_BOUNDS.lngMax, b.getEast())
+  };
+  // peta sedang menghadap area di luar cakupan data -> pakai seluruh cakupan data
+  windViewBox = (box.latMin < box.latMax && box.lngMin < box.lngMax) ? box : { ...WIND_BOUNDS };
+}
+
 function randomWindPoint(){
+  const v = windViewBox;
   return {
-    lat: WIND_BOUNDS.latMin + Math.random() * (WIND_BOUNDS.latMax - WIND_BOUNDS.latMin),
-    lng: WIND_BOUNDS.lngMin + Math.random() * (WIND_BOUNDS.lngMax - WIND_BOUNDS.lngMin)
+    lat: v.latMin + Math.random() * (v.latMax - v.latMin),
+    lng: v.lngMin + Math.random() * (v.lngMax - v.lngMin)
   };
 }
 
@@ -1232,8 +1252,9 @@ function stepWindParticle(p){
   p.age++;
   p.lastSpeed = speed;
 
-  const outOfBounds = p.lat < WIND_BOUNDS.latMin || p.lat > WIND_BOUNDS.latMax ||
-                       p.lng < WIND_BOUNDS.lngMin || p.lng > WIND_BOUNDS.lngMax;
+  const vb = windViewBox;
+  const outOfBounds = p.lat < vb.latMin || p.lat > vb.latMax ||
+                       p.lng < vb.lngMin || p.lng > vb.lngMax;
   if (outOfBounds || p.age > 240){
     const np = randomWindPoint();
     p.lat = np.lat; p.lng = np.lng; p.age = 0; p.trail = [];
@@ -1242,6 +1263,7 @@ function stepWindParticle(p){
 
 function drawWindFrame(){
   if (!windVisible || !windCtx) return;
+  updateWindViewBox();
   windCtx.clearRect(0, 0, windCanvas.width, windCanvas.height);
   windParticles.forEach(p => {
     stepWindParticle(p);
@@ -2303,7 +2325,12 @@ async function loadRecap(){
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     allRecords = data.records || [];
+    const batasWaktu = Date.now() - MANUAL_ISPU_BERLAKU_JAM * 60 * 60 * 1000;
     (data.manual_ispu || []).forEach(m => {
+      // Backend versi baru mengirim m.waktu (kapan diinput). Backend lama tidak
+      // mengirimnya — dalam kasus itu nilai tetap dipakai seperti sebelumnya.
+      const t = m.waktu ? new Date(m.waktu).getTime() : NaN;
+      if (!isNaN(t) && t < batasWaktu) return; // sudah kedaluwarsa -> pakai estimasi
       manualISPU[m.kecamatan] = Number(m.nilai);
     });
   } catch(err){
