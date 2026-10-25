@@ -365,6 +365,8 @@
   .status-msg.ok{color:var(--good);}
 
   canvas{max-height:220px;}
+  /* Kanvas peta (titik hotspot, animasi angin) tidak boleh ikut dibatasi tinggi grafik */
+  .leaflet-container canvas{max-height:none;}
   #kecamatanBarChartWrap{max-height:560px; overflow-y:auto; overflow-x:hidden;}
   #kecamatanBarChart{max-height:none;}
 
