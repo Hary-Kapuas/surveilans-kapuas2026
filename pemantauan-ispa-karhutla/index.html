@@ -705,9 +705,11 @@
       <form id="ispuForm">
         <label>Kecamatan</label>
         <select id="mKecamatan" required></select>
+        <div id="cekIspuStatus" style="margin-top:8px;"></div>
         <label>Nilai ISPU / AQI</label>
         <input type="number" id="mNilai" min="0" required>
         <button type="submit" class="btn secondary">Simpan Nilai Manual</button>
+        <div class="status-msg" id="ispuStatus"></div>
       </form>
     </div>
 
@@ -972,6 +974,7 @@ let hotspotCounts = {};   // { "Selat": 3, ... }
 let hotspotPoints = [];   // [{lat, lng}, ...] titik individual dari FIRMS
 let hotspotLayerGroup = null;
 let manualISPU = {};      // { "Selat": 120, ... } input manual (opsional, override)
+let manualISPUWaktu = {}; // { "Selat": "2026-10-26T04:41:00.000Z" } kapan nilai manual diinput
 // Nilai manual hanya berlaku sekian jam sejak diinput; setelah itu kecamatan kembali
 // memakai estimasi otomatis (hotspot) sampai ada input manual yang baru.
 const MANUAL_ISPU_BERLAKU_JAM = 24;
@@ -2332,6 +2335,7 @@ async function loadRecap(){
       const t = m.waktu ? new Date(m.waktu).getTime() : NaN;
       if (!isNaN(t) && t < batasWaktu) return; // sudah kedaluwarsa -> pakai estimasi
       manualISPU[m.kecamatan] = Number(m.nilai);
+      if (m.waktu) manualISPUWaktu[m.kecamatan] = m.waktu;
     });
   } catch(err){
     setStatus("refreshStatus", "Gagal memuat rekap ISPA: " + err.message, "err");
@@ -2894,23 +2898,117 @@ async function simpanIspaFinal(mode, rowIndex){
 /* ======================================================
    10. FORM SUBMIT: NILAI ISPU MANUAL
 ====================================================== */
+let existingIspuInfo = null; // hasil cek terakhir: { exists, nilai, waktu, kedaluwarsa }
+
+function formatWaktuIspu(iso){
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "-";
+  return d.toLocaleString('id-ID', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+
+// Cek ke backend (data terbaru, termasuk yang baru diinput petugas lain).
+// Kalau backend belum punya aksi ini, jatuh ke data yang sudah dimuat di halaman.
+async function cekIspuManual(){
+  const box = document.getElementById("cekIspuStatus");
+  existingIspuInfo = null;
+  const kec = document.getElementById("mKecamatan").value;
+  if (!kec){ box.innerHTML = ""; return; }
+
+  let nilai = null, waktu = null;
+  if (SCRIPT_URL){
+    box.innerHTML = `<div class="data-status-box checking">⏳ Memeriksa nilai tersimpan...</div>`;
+    try{
+      const res = await fetch(`${SCRIPT_URL}?action=cek_ispu_manual&kecamatan=${encodeURIComponent(kec)}`);
+      const data = await res.json();
+      if (!data.error){
+        if (data.exists){ nilai = Number(data.nilai); waktu = data.waktu; }
+        else { nilai = null; }
+      } else if (manualISPU[kec] !== undefined){
+        nilai = manualISPU[kec]; waktu = manualISPUWaktu[kec] || null;
+      }
+    } catch(err){
+      if (manualISPU[kec] !== undefined){ nilai = manualISPU[kec]; waktu = manualISPUWaktu[kec] || null; }
+    }
+  } else if (manualISPU[kec] !== undefined){
+    nilai = manualISPU[kec]; waktu = manualISPUWaktu[kec] || null;
+  }
+
+  if (nilai === null || isNaN(nilai)){
+    box.innerHTML = `<div class="data-status-box belum-ada">○ Belum ada nilai ISPU manual untuk ${kec}. Silakan isi di bawah.</div>`;
+    return;
+  }
+
+  const t = waktu ? new Date(waktu).getTime() : NaN;
+  const batas = MANUAL_ISPU_BERLAKU_JAM * 60 * 60 * 1000;
+  const kedaluwarsa = !isNaN(t) && (Date.now() - t) > batas;
+  existingIspuInfo = { exists: true, nilai, waktu, kedaluwarsa };
+  const jam = waktu ? formatWaktuIspu(waktu) : "waktu tidak tercatat";
+
+  if (kedaluwarsa){
+    box.innerHTML = `<div class="data-status-box belum-ada">
+      ○ Nilai manual terakhir untuk <strong>${kec}</strong> adalah <strong>${nilai}</strong> (diinput ${jam}), tetapi sudah
+      <strong>kedaluwarsa</strong> (lebih dari ${MANUAL_ISPU_BERLAKU_JAM} jam) — kecamatan ini kembali memakai estimasi otomatis.
+      Nilai baru yang disimpan akan berlaku ${MANUAL_ISPU_BERLAKU_JAM} jam.</div>`;
+  } else {
+    const sampai = isNaN(t) ? "" : ` Berlaku sampai ${formatWaktuIspu(new Date(t + batas).toISOString())}.`;
+    box.innerHTML = `<div class="data-status-box sudah-ada">
+      ✔ Sudah ada nilai ISPU manual untuk <strong>${kec}</strong>: <strong>${nilai}</strong> (diinput ${jam}).${sampai}
+      Kalau Bapak/Ibu submit lagi, sistem akan menanyakan apakah ini <em>pembaruan</em> nilai tersebut.</div>`;
+  }
+}
+document.getElementById("mKecamatan").addEventListener("change", cekIspuManual);
+
 document.getElementById("ispuForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const kec = document.getElementById("mKecamatan").value;
   const nilai = Number(document.getElementById("mNilai").value);
-  manualISPU[kec] = nilai;
-  updateMarkers();
-  renderRecapTable();
-  if (SCRIPT_URL){
-    try{
-      await fetch(SCRIPT_URL, {
+
+  // Cek ulang (mungkin petugas lain baru saja menginput) sebelum simpan
+  await cekIspuManual();
+
+  if (existingIspuInfo && existingIspuInfo.exists && !existingIspuInfo.kedaluwarsa){
+    showModal(
+      "Nilai ISPU Sudah Pernah Diinput",
+      `Untuk <strong>${kec}</strong> sudah ada nilai manual <strong>${existingIspuInfo.nilai}</strong>
+       (diinput ${existingIspuInfo.waktu ? formatWaktuIspu(existingIspuInfo.waktu) : "waktu tidak tercatat"}).<br><br>
+       Apakah nilai baru <strong>${nilai}</strong> ini untuk <strong>memperbarui</strong> nilai tersebut?
+       Nilai lama diganti dan masa berlakunya dihitung ulang ${MANUAL_ISPU_BERLAKU_JAM} jam dari sekarang.`,
+      [
+        { label: "✔ Ya, Perbarui Nilai", onClick: () => simpanIspuFinal(kec, nilai, existingIspuInfo.nilai) },
+        { label: "Batal", secondary: true, onClick: () => setStatus("ispuStatus", "Dibatalkan — nilai tidak diubah.", "") },
+      ]
+    );
+    return;
+  }
+  await simpanIspuFinal(kec, nilai, null);
+});
+
+async function simpanIspuFinal(kec, nilai, nilaiLama){
+  setStatus("ispuStatus", "Menyimpan...", "");
+  try{
+    if (SCRIPT_URL){
+      const res = await fetch(SCRIPT_URL, {
         method: "POST",
         headers: {"Content-Type": "text/plain"},
         body: JSON.stringify({ action: "simpan_ispu_manual", kecamatan: kec, nilai })
       });
-    } catch(err){ /* diam-diam gagal, data tetap tersimpan di sesi ini */ }
+      const data = await res.json();
+      if (data.error || data.ok === false) throw new Error(data.error || data.message || "server menolak");
+    }
+    manualISPU[kec] = nilai;
+    manualISPUWaktu[kec] = new Date().toISOString();
+    updateMarkers();
+    renderRecapTable();
+    const pesan = nilaiLama !== null
+      ? `✔ Diperbarui: nilai ISPU manual ${kec} diubah dari ${nilaiLama} menjadi ${nilai}. Berlaku ${MANUAL_ISPU_BERLAKU_JAM} jam.`
+      : `✔ Tersimpan: nilai ISPU manual ${kec} = ${nilai}. Berlaku ${MANUAL_ISPU_BERLAKU_JAM} jam.`;
+    setStatus("ispuStatus", pesan, "ok");
+    document.getElementById("mNilai").value = "";
+    cekIspuManual();
+  } catch(err){
+    setStatus("ispuStatus", "Gagal menyimpan ke server: " + err.message + ". Nilai belum tersimpan, coba lagi.", "err");
   }
-});
+}
 
 /* ======================================================
    11a. LAPORAN HARIAN FORMAT PROVINSI
@@ -3193,6 +3291,7 @@ function init(){
   initMarkers();
   refreshAll();
   loadManualHotspots();
+  cekIspuManual();
   document.getElementById("fTanggal").addEventListener("change", refreshAll);
   document.getElementById("trendDari").addEventListener("change", () => { renderTrendChart(); renderKecamatanBarChart(); });
   document.getElementById("trendSampai").addEventListener("change", () => { renderTrendChart(); renderKecamatanBarChart(); });
